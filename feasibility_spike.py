@@ -2,7 +2,7 @@
 """
 Phase 0 Step 2 Feasibility Spike — Rulemaking Engine
 
-This standalone script checks four already-selected EPA dockets for Phase 0
+This standalone script checks the accepted V1 EPA starter dockets for Phase 0
 feasibility by verifying:
   - Federal Register proposed/final rule document pairing and text access
   - Regulations.gov comment retrievability
@@ -17,6 +17,7 @@ Requires:
 import json
 import os
 import re
+import sys
 import time
 from html import unescape
 
@@ -31,23 +32,18 @@ REGS_BASE = "https://api.regulations.gov/v4"
 CANDIDATES = [
     {
         "sequence": 1,
-        "docket_id": "EPA-HQ-OAR-2021-0324",
-        "title": "Renewable Fuel Standard Program: RFS Annual Rules (2020–2022 volumes)",
-    },
-    {
-        "sequence": 2,
         "docket_id": "EPA-HQ-OAR-2020-0272",
         "title": "Revised Cross-State Air Pollution Rule Update for the 2008 Ozone NAAQS",
     },
     {
-        "sequence": 3,
-        "docket_id": "EPA-HQ-OAR-2021-0427",
-        "title": "Renewable Fuel Standard Program: Standards for 2023–2025 and Other Changes",
+        "sequence": 2,
+        "docket_id": "EPA-HQ-OAR-2018-0225",
+        "title": "Determination Regarding Good Neighbor Obligations for the 2008 Ozone NAAQS",
     },
     {
-        "sequence": 4,
-        "docket_id": "EPA-HQ-OAR-2009-0734",
-        "title": "Standards of Performance for New Residential Wood Heaters, Hydronic Heaters and Forced-Air Furnaces",
+        "sequence": 3,
+        "docket_id": "EPA-HQ-OAR-2020-0430",
+        "title": "Primary Copper Smelting National Emission Standards for Hazardous Air Pollutants Reviews (Subparts QQQ and EEEEEE)",
     },
 ]
 
@@ -70,7 +66,9 @@ NON_MAIN_DOC_KEYWORDS = {
     "extension",
     "extend",
     "notice of availability",
+    "notice of data availability",
     "petition",
+    "public hearing",
     "reconsideration",
     "remand",
     "reopening",
@@ -80,6 +78,17 @@ NON_MAIN_DOC_KEYWORDS = {
     "technical correction",
     "withdrawal",
 }
+
+# Patterns that indicate text is an attachment pointer, not substantive inline body text.
+# V1 requires inline comment body text; attachment-only comments do not satisfy that requirement.
+ATTACHMENT_POINTER_RE = re.compile(
+    r"^\s*(?:please\s+)?see\s+attach\w*\.?\s*$"
+    r"|^\s*(?:please\s+)?see\s+(?:the\s+)?attached\s+(?:file|document|comment|pdf)s?\.?\s*$"
+    r"|^\s*attach\w*\s+only\.?\s*$"
+    r"|^\s*comment\s+(?:is\s+)?attach\w*\.?\s*$"
+    r"|^\s*refer\s+to\s+attach\w*\.?\s*$",
+    re.IGNORECASE,
+)
 
 PREAMBLE_MARKERS = [
     "response to comments",
@@ -172,6 +181,20 @@ def normalize_title_for_compare(text: str) -> str:
     normalized = normalized.replace("–", "-").replace("—", "-")
     normalized = re.sub(r"\s+", " ", normalized)
     return normalized.strip()
+
+
+def is_substantive_inline_text(text: str) -> bool:
+    """
+    Returns True if text appears to be substantive inline comment body text.
+    Returns False for empty text, very short text, or attachment-pointer stubs.
+    V1 requires substantive inline text; attachment pointers do not qualify.
+    """
+    if not text or not text.strip():
+        return False
+    stripped = normalize_whitespace(text)
+    if len(stripped) < 30:
+        return ATTACHMENT_POINTER_RE.match(stripped) is None and len(stripped) > 5
+    return ATTACHMENT_POINTER_RE.match(stripped) is None
 
 
 # ── HTTP helpers ───────────────────────────────────────────────────────────────
@@ -749,6 +772,47 @@ def fetch_regs_documents(docket_id: str, candidate_title: str) -> dict:
     }
 
 
+def get_candidate_by_docket_id(docket_id: str) -> dict | None:
+    for candidate in CANDIDATES:
+        if candidate["docket_id"] == docket_id:
+            return candidate
+    return None
+
+
+def select_regs_proposed_docs(candidate: dict) -> dict:
+    documents_response = fetch_regs_documents(candidate["docket_id"], candidate["title"])
+    if documents_response["status"] != "ok":
+        return {
+            "status": documents_response["status"],
+            "message": documents_response["message"],
+            "documents_response": documents_response,
+            "sorted_proposed_docs": [],
+        }
+
+    all_docs = documents_response["documents"]
+    proposed_docs = [
+        doc for doc in all_docs
+        if doc.get("document_type") == "Proposed Rule" and not doc.get("withdrawn")
+    ]
+    sorted_proposed_docs = sort_fr_candidates([
+        {
+            "non_main_keyword_flag": False,
+            "title_alignment": doc.get("title_alignment"),
+            "has_xml": False,
+            "has_html": False,
+            "publication_date": doc.get("posted_date"),
+            **doc,
+        }
+        for doc in proposed_docs
+    ])
+    return {
+        "status": "ok",
+        "message": "OK",
+        "documents_response": documents_response,
+        "sorted_proposed_docs": sorted_proposed_docs,
+    }
+
+
 def check_comment_retrieval_for_doc(doc: dict) -> dict:
     object_id = doc.get("object_id")
     result = {
@@ -761,12 +825,15 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
         "sample_docs_returned": 0,
         "sample_has_visible_text": False,
         "sample_text_preview": None,
+        "substantive_text_count": 0,
+        "attachment_pointer_count": 0,
         "message": None,
         "detail_check": {
             "status": "not_needed",
             "comment_id": None,
             "http_status": None,
             "has_visible_text": False,
+            "has_substantive_text": False,
             "text_preview": None,
             "message": "Detail comment lookup was not needed.",
         },
@@ -779,7 +846,7 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
 
     response = get_regs("comments", {
         "filter[commentOnId]": object_id,
-        "page[size]": 5,
+        "page[size]": 20,
         "page[number]": 1,
     })
 
@@ -791,27 +858,36 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
     body = response["body"] or {}
     comments = body.get("data") or []
     total_elements = (body.get("meta") or {}).get("totalElements")
-    visible_texts = []
+    substantive_texts = []
+    attachment_pointer_texts = []
     first_comment_id = comments[0].get("id") if comments else None
-    for comment in comments[:5]:
+    for comment in comments[:20]:
         attrs = comment.get("attributes") or {}
         text = extract_visible_comment_text(attrs)
         if text and text.strip():
-            visible_texts.append(text.strip())
+            if is_substantive_inline_text(text):
+                substantive_texts.append(text.strip())
+            else:
+                attachment_pointer_texts.append(text.strip())
 
     result["comments_total_reported"] = total_elements
     result["sample_docs_returned"] = len(comments)
-    result["sample_has_visible_text"] = bool(visible_texts)
-    result["sample_text_preview"] = preview(visible_texts[0]) if visible_texts else None
+    result["substantive_text_count"] = len(substantive_texts)
+    result["attachment_pointer_count"] = len(attachment_pointer_texts)
+    result["sample_has_visible_text"] = bool(substantive_texts or attachment_pointer_texts)
+    result["sample_text_preview"] = preview(substantive_texts[0]) if substantive_texts else (
+        preview(attachment_pointer_texts[0]) if attachment_pointer_texts else None
+    )
 
-    if visible_texts:
-        result["query_status"] = "confirmed_text"
-        result["message"] = "Visible comment text was confirmed in the sample payload."
+    if substantive_texts:
+        result["query_status"] = "confirmed_substantive_text"
+        result["message"] = "Substantive inline comment text was confirmed in the sample payload."
         result["detail_check"] = {
             "status": "not_needed",
             "comment_id": None,
             "http_status": None,
-            "has_visible_text": False,
+            "has_visible_text": True,
+            "has_substantive_text": True,
             "text_preview": None,
             "message": "Detail comment lookup was not needed because the list payload already contained visible text.",
         }
@@ -828,6 +904,7 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
                 "comment_id": first_comment_id,
                 "http_status": detail_response.get("http_status"),
                 "has_visible_text": False,
+                "has_substantive_text": False,
                 "text_preview": None,
                 "message": detail_response["message"],
             }
@@ -837,31 +914,55 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
         detail_data = detail_body.get("data") or {}
         detail_attrs = detail_data.get("attributes") or {}
         detail_text = extract_visible_comment_text(detail_attrs)
-        if detail_text:
-            result["query_status"] = "confirmed_text"
+        detail_has_visible_text = bool(detail_text)
+        detail_has_substantive_text = is_substantive_inline_text(detail_text) if detail_text else False
+        if detail_has_substantive_text:
+            result["query_status"] = "confirmed_substantive_text"
             result["sample_has_visible_text"] = True
             result["sample_text_preview"] = preview(detail_text)
-            result["message"] = "Visible comment text was confirmed only at the comment detail endpoint."
+            result["substantive_text_count"] += 1
+            result["message"] = "Substantive inline comment text was confirmed only at the comment detail endpoint."
             result["detail_check"] = {
-                "status": "confirmed_text",
+                "status": "confirmed_substantive_text",
                 "comment_id": first_comment_id,
                 "http_status": detail_response.get("http_status"),
                 "has_visible_text": True,
+                "has_substantive_text": True,
                 "text_preview": preview(detail_text),
-                "message": "Detail endpoint contained visible comment text.",
+                "message": "Detail endpoint contained substantive inline comment text.",
+            }
+        elif detail_has_visible_text:
+            result["query_status"] = "confirmed_attachment_pointer_only"
+            result["sample_has_visible_text"] = True
+            result["sample_text_preview"] = preview(detail_text)
+            if not attachment_pointer_texts:
+                result["attachment_pointer_count"] += 1
+            result["message"] = (
+                "Comment text was confirmed at the API level, but the detail endpoint contained only "
+                "attachment-pointer text."
+            )
+            result["detail_check"] = {
+                "status": "confirmed_attachment_pointer_only",
+                "comment_id": first_comment_id,
+                "http_status": detail_response.get("http_status"),
+                "has_visible_text": True,
+                "has_substantive_text": False,
+                "text_preview": preview(detail_text),
+                "message": "Detail endpoint contained only attachment-pointer text; the comment may be attachment-only.",
             }
         else:
             result["query_status"] = "metadata_only"
             result["message"] = (
-                "Comments were returned, and the detail endpoint also had no visible text; the comment may be attachment-only."
+                "Comments were returned, but both the list and detail endpoints had empty text fields."
             )
             result["detail_check"] = {
                 "status": "metadata_only",
                 "comment_id": first_comment_id,
                 "http_status": detail_response.get("http_status"),
                 "has_visible_text": False,
+                "has_substantive_text": False,
                 "text_preview": None,
-                "message": "Detail endpoint also had no visible text; the comment may be attachment-only.",
+                "message": "Detail endpoint also had no visible text; text availability remains metadata-only.",
             }
     else:
         result["query_status"] = "no_comments_returned"
@@ -871,6 +972,7 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
             "comment_id": None,
             "http_status": None,
             "has_visible_text": False,
+            "has_substantive_text": False,
             "text_preview": None,
             "message": "Detail comment lookup was not needed because the list query returned no comments.",
         }
@@ -878,14 +980,157 @@ def check_comment_retrieval_for_doc(doc: dict) -> dict:
     return result
 
 
+def run_deep_sample(docket_id: str) -> dict:
+    candidate = get_candidate_by_docket_id(docket_id)
+    if not candidate:
+        raise ValueError(f"Unknown candidate docket: {docket_id}")
+
+    selection = select_regs_proposed_docs(candidate)
+    if selection["status"] != "ok":
+        result = {
+            "status": selection["status"],
+            "docket_id": docket_id,
+            "message": selection["message"],
+        }
+        print("=" * 72)
+        print(f"Deep sample failed for {docket_id}")
+        print("=" * 72)
+        print(result["message"])
+        return result
+
+    proposed_docs = selection["sorted_proposed_docs"]
+    if not proposed_docs:
+        result = {
+            "status": "no_proposed_rule_doc",
+            "docket_id": docket_id,
+            "message": "No non-withdrawn Proposed Rule document was available for deep sampling.",
+        }
+        print("=" * 72)
+        print(f"Deep sample failed for {docket_id}")
+        print("=" * 72)
+        print(result["message"])
+        return result
+
+    target_doc = proposed_docs[0]
+    object_id = target_doc.get("object_id")
+    if not object_id:
+        result = {
+            "status": "unknown_object_id",
+            "docket_id": docket_id,
+            "message": "Selected proposed-rule document has no objectId for deep sampling.",
+        }
+        print("=" * 72)
+        print(f"Deep sample failed for {docket_id}")
+        print("=" * 72)
+        print(result["message"])
+        return result
+
+    substantive_previews = []
+    substantive_count = 0
+    attachment_pointer_count = 0
+    no_text_count = 0
+    total_fetched = 0
+    pages_checked = 0
+
+    for page_number in range(1, 6):
+        response = get_regs("comments", {
+            "filter[commentOnId]": object_id,
+            "page[size]": 20,
+            "page[number]": page_number,
+        })
+        if response["status"] != "ok":
+            result = {
+                "status": response["status"],
+                "docket_id": docket_id,
+                "object_id": object_id,
+                "page_failed": page_number,
+                "message": response["message"],
+                "total_fetched": total_fetched,
+                "substantive_count": substantive_count,
+                "attachment_pointer_count": attachment_pointer_count,
+                "no_text_count": no_text_count,
+                "substantive_previews": substantive_previews,
+            }
+            print("=" * 72)
+            print(f"Deep sample for {docket_id}")
+            print("=" * 72)
+            print(f"Selected proposed-rule document: {target_doc.get('id')} ({target_doc.get('title')})")
+            print(f"Object ID: {object_id}")
+            print(f"Stopped on page {page_number}: {response['message']}")
+            print(f"Fetched so far: {total_fetched}")
+            return result
+
+        body = response["body"] or {}
+        comments = body.get("data") or []
+        meta = body.get("meta") or {}
+        pages_checked += 1
+        total_fetched += len(comments)
+
+        for comment in comments:
+            attrs = comment.get("attributes") or {}
+            text = extract_visible_comment_text(attrs)
+            if not text:
+                no_text_count += 1
+            elif is_substantive_inline_text(text):
+                substantive_count += 1
+                if len(substantive_previews) < 3:
+                    substantive_previews.append(preview(text))
+            else:
+                attachment_pointer_count += 1
+
+        total_pages = meta.get("totalPages")
+        if not comments or total_pages and page_number >= total_pages:
+            break
+
+    result = {
+        "status": "ok",
+        "docket_id": docket_id,
+        "selected_proposed_rule_document_id": target_doc.get("id"),
+        "selected_proposed_rule_title": target_doc.get("title"),
+        "object_id": object_id,
+        "pages_checked": pages_checked,
+        "total_fetched": total_fetched,
+        "substantive_count": substantive_count,
+        "attachment_pointer_count": attachment_pointer_count,
+        "no_text_count": no_text_count,
+        "substantive_previews": substantive_previews,
+    }
+
+    print("=" * 72)
+    print(f"Deep sample for {docket_id}")
+    print("=" * 72)
+    print(f"Selected proposed-rule document: {target_doc.get('id')} ({target_doc.get('title')})")
+    print(f"Object ID: {object_id}")
+    print(f"Pages checked: {pages_checked}")
+    print(f"Total comments fetched: {total_fetched}")
+    print(f"Substantive inline text count: {substantive_count}")
+    print(f"Attachment-pointer count: {attachment_pointer_count}")
+    print(f"No-text count: {no_text_count}")
+    if substantive_previews:
+        print("Sample substantive previews:")
+        for snippet in substantive_previews:
+            print(f'  - "{snippet}"')
+    else:
+        print("Sample substantive previews:")
+        print("  (none found)")
+
+    return result
+
+
 def determine_comment_retrievability(comment_checks: list) -> tuple:
-    if any(check["query_status"] == "confirmed_text" for check in comment_checks):
+    if any(check["query_status"] == "confirmed_substantive_text" for check in comment_checks):
         return "confirmed", []
 
     unresolved_statuses = {"auth_failure", "rate_limited", "network_error", "unexpected_http_status", "unknown", "not_found"}
     if any(check["query_status"] in unresolved_statuses for check in comment_checks):
         return "unresolved", [
             "At least one proposed-rule comment check was blocked by auth, rate limits, network issues, or missing objectId."
+        ]
+
+    if any(check["query_status"] == "confirmed_attachment_pointer_only" for check in comment_checks):
+        return "attachment_pointer_only", [
+            "Comment text was confirmed at the API level, but the sampled payload contained only "
+            "attachment pointers (e.g. 'See Attached'). V1 requires substantive inline body text."
         ]
 
     if any(check["query_status"] == "metadata_only" for check in comment_checks):
@@ -1098,6 +1343,11 @@ def assess_phase0(candidate: dict, fr: dict, regs: dict, segmentation: dict, pre
 
     if comment_status == "metadata_only":
         rationale.append("Comments were returned, but visible text was not confirmed in the sampled payload.")
+    if comment_status == "attachment_pointer_only":
+        rationale.append(
+            "Comment text confirmed at API level but sampled payload is attachment-pointer only. "
+            "Not sufficient for V1 inline-comment analysis."
+        )
     if preamble_status == "weak_signal":
         rationale.append("Final-rule comment discussion was detected only weakly.")
     if fr.get("inference", {}).get("proposed_rule_pairing_status") != "selected":
@@ -1319,4 +1569,7 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
+    if len(sys.argv) == 3 and sys.argv[1] == "--deep-sample":
+        run_deep_sample(sys.argv[2])
+    else:
+        run()
