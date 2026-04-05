@@ -219,11 +219,63 @@ def best_comment_signal(comment_records: list[dict]) -> tuple[str, str]:
     return best.get("attribution_method") or "unknown", best.get("confidence") or "none"
 
 
-def build_alignment_signal(card: dict) -> dict:
+def load_dedup_metadata(base_dir: str) -> dict:
+    dedup_path = os.path.join(base_dir, "comment_dedup.json")
+    try:
+        payload = read_json(dedup_path)
+    except (FileNotFoundError, OSError):
+        return {
+            "dedup_available": False,
+            "comment_to_family_id": {},
+            "family_member_count": {},
+            "family_canonical": {},
+        }
+
+    comment_to_family_id = {}
+    family_member_count = {}
+    family_canonical = {}
+    for family in payload.get("families", []):
+        family_id = family.get("family_id")
+        if not family_id:
+            continue
+        family_member_count[family_id] = family.get("member_count", 1)
+        family_canonical[family_id] = family.get("canonical_comment_id")
+        for comment_id in family.get("member_ids", []):
+            comment_to_family_id[comment_id] = family_id
+
+    return {
+        "dedup_available": True,
+        "comment_to_family_id": comment_to_family_id,
+        "family_member_count": family_member_count,
+        "family_canonical": family_canonical,
+    }
+
+
+def build_alignment_signal(card: dict, dedup_metadata: dict) -> dict:
     related_comments = card.get("related_comments", [])
     preamble_links = card.get("preamble_links", [])
+    dedup_available = dedup_metadata["dedup_available"]
 
-    score = sum(comment_signal_points(comment) for comment in related_comments)
+    family_ids = []
+    family_to_max_points = {}
+    for index, comment in enumerate(related_comments):
+        comment_id = comment.get("comment_id")
+        if comment_id is None:
+            family_id = f"_null_{index}"
+        else:
+            family_id = dedup_metadata["comment_to_family_id"].get(comment_id) if dedup_available else None
+        if family_id is None:
+            family_id = comment_id
+        family_ids.append(family_id)
+        family_to_max_points[family_id] = max(
+            family_to_max_points.get(family_id, 0),
+            comment_signal_points(comment),
+        )
+
+    if dedup_available:
+        score = sum(family_to_max_points.values())
+    else:
+        score = sum(comment_signal_points(comment) for comment in related_comments)
     score += sum(preamble_signal_points(link) for link in preamble_links)
 
     if score == 0:
@@ -236,6 +288,13 @@ def build_alignment_signal(card: dict) -> dict:
         level = "high"
 
     comment_count = len(related_comments)
+    unique_comment_count = len(set(family_ids)) if dedup_available else None
+    largest_family_size = None
+    if dedup_available and family_ids:
+        largest_family_size = max(
+            dedup_metadata["family_member_count"].get(family_id, 1)
+            for family_id in set(family_ids)
+        )
     best_attribution_confidence = "none"
     if related_comments:
         best_attribution_confidence = max(
@@ -256,6 +315,11 @@ def build_alignment_signal(card: dict) -> dict:
     else:
         if comment_count == 0:
             comment_note = "No inline comments"
+        elif dedup_available and unique_comment_count != comment_count:
+            comment_note = (
+                f"{comment_count} comments ({unique_comment_count} unique arguments) attributed "
+                f"(best: {best_comment_method}/{best_comment_confidence})"
+            )
         elif comment_count == 1 and best_comment_method == "citation" and best_comment_confidence == "high":
             comment_note = "1 comment attributed by citation (high confidence)"
         elif comment_count == 1:
@@ -281,6 +345,8 @@ def build_alignment_signal(card: dict) -> dict:
         "score": score,
         "features": {
             "comment_count": comment_count,
+            "unique_comment_count": unique_comment_count,
+            "largest_family_size": largest_family_size,
             "best_attribution_confidence": best_attribution_confidence,
             "preamble_link_count": preamble_link_count,
             "best_link_type": best_link_type,
@@ -296,6 +362,7 @@ def load_docket_inputs(docket_id: str) -> dict:
     proposed_sections = read_json(os.path.join(base_dir, "proposed_rule.json"))
     final_sections = read_json(os.path.join(base_dir, "final_rule.json"))
     comments = read_json(os.path.join(base_dir, "comments.json"))
+    dedup_metadata = load_dedup_metadata(base_dir)
 
     return {
         "base_dir": base_dir,
@@ -305,6 +372,7 @@ def load_docket_inputs(docket_id: str) -> dict:
         "final_by_id": {section["section_id"]: section for section in final_sections},
         "comments_by_id": {comment["comment_id"]: comment for comment in comments},
         "final_sections": final_sections,
+        "dedup_metadata": dedup_metadata,
     }
 
 
@@ -504,7 +572,7 @@ def generate_cards_for_docket(docket_id: str) -> tuple[list[dict], dict, dict]:
 
     build_preamble_links(cards, preamble_sections, preamble_cfr_index)
     for card in cards:
-        card["alignment_signal"] = build_alignment_signal(card)
+        card["alignment_signal"] = build_alignment_signal(card, inputs["dedup_metadata"])
 
     for card in cards:
         card.pop("_heading_tokens", None)
@@ -527,6 +595,16 @@ def generate_cards_for_docket(docket_id: str) -> tuple[list[dict], dict, dict]:
 
 
 def render_card_report(card: dict) -> str:
+    signal_features = card["alignment_signal"]["features"]
+    signal_summary = f"  comment_count={signal_features['comment_count']}  "
+    if signal_features["unique_comment_count"] is not None:
+        signal_summary += f"unique_comment_count={signal_features['unique_comment_count']}  "
+    signal_summary += (
+        f"best_attribution={signal_features['best_attribution_confidence']}  "
+        f"preamble_link_count={signal_features['preamble_link_count']}  "
+        f"best_link_type={signal_features['best_link_type']}"
+    )
+
     lines = [
         "=" * 80,
         f"CARD: {card['card_id']}",
@@ -568,11 +646,7 @@ def render_card_report(card: dict) -> str:
         [
             "",
             f"ALIGNMENT SIGNAL: {card['alignment_signal']['level']}  (score {card['alignment_signal']['score']})",
-            "  "
-            f"comment_count={card['alignment_signal']['features']['comment_count']}  "
-            f"best_attribution={card['alignment_signal']['features']['best_attribution_confidence']}  "
-            f"preamble_link_count={card['alignment_signal']['features']['preamble_link_count']}  "
-            f"best_link_type={card['alignment_signal']['features']['best_link_type']}",
+            signal_summary,
             f"  {card['alignment_signal']['evidence_note']}",
             "",
             f"REVIEW STATUS: {card['review_status']}",
@@ -588,7 +662,7 @@ def render_report(cards: list[dict], docket_summaries: list[tuple[str, dict]]) -
     for card in cards:
         report_parts.append(render_card_report(card))
 
-    report_parts.append("=== Phase 4 change cards complete ===")
+    report_parts.append("=== Phase 5 change cards complete ===")
     for docket_id, summary in docket_summaries:
         report_parts.append(
             f"{docket_id}   modified {summary['modified']} | "
