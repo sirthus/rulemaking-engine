@@ -16,6 +16,8 @@ DOCKET_IDS = [
     "EPA-HQ-OAR-2020-0430",
 ]
 
+# Core + rulemaking-domain stopwords are used here because heading/comment
+# similarity should ignore universal rulemaking vocabulary and focus on issue terms.
 STOPWORDS = {
     "a",
     "an",
@@ -223,7 +225,7 @@ def load_dedup_metadata(base_dir: str) -> dict:
     dedup_path = os.path.join(base_dir, "comment_dedup.json")
     try:
         payload = read_json(dedup_path)
-    except (FileNotFoundError, OSError):
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
         return {
             "dedup_available": False,
             "comment_to_family_id": {},
@@ -490,7 +492,11 @@ def build_preamble_links(cards: list[dict], preamble_sections: list[dict], pream
                 link.pop("_order", None)
             card["preamble_links"] = selected_links
         except Exception as exc:
-            print_line("CARDS", card.get("docket_id", "unknown"), f"warning: preamble linkage skipped for {card.get('card_id', 'unknown_card')}: {exc}")
+            print_line(
+                "WARN",
+                card.get("docket_id", "unknown"),
+                f"preamble link build failed for {card.get('card_id', '?')}: {type(exc).__name__}: {exc}",
+            )
             card["preamble_links"] = []
 
 
@@ -690,7 +696,7 @@ def main():
             print_line(
                 "CARDS",
                 docket_id,
-                f"{stats['alignment_records']} alignment records \u2192 {stats['changed_sections']} changed sections",
+                f"{stats['alignment_records']} alignment records -> {stats['changed_sections']} changed sections",
             )
             print_line(
                 "CARDS",
@@ -712,7 +718,7 @@ def main():
             docket_outputs.append((docket_id, base_dir, cards))
             docket_summaries.append((docket_id, summary))
             print_line("CARDS", docket_id, f"written  {os.path.relpath(json_path, ROOT_DIR)}")
-        except (FileNotFoundError, OSError) as exc:
+        except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
             path = getattr(exc, "filename", None) or str(exc)
             print_line("CARDS", docket_id, f"error: skipping docket due to file I/O problem: {path}")
             continue

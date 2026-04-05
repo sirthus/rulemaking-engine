@@ -4,11 +4,11 @@ Traceable rule-evolution analysis plus cautious comment-theme alignment for publ
 
 ## Overview
 
-This repository analyzes how EPA rules change from proposed to final form and how public comment themes may relate to those changed sections. The system is designed to stay evidence-backed and conservative: it does not claim that comments "caused" a rule change. The core implemented pipeline through Phase 6 is deterministic, and the optional Phase 7 labeling helper uses an LLM only to name and summarize already-built theme clusters.
+This repository analyzes how EPA rules change from proposed to final form and how public comment themes may relate to those changed sections. The system is designed to stay evidence-backed and conservative: it does not claim that comments "caused" a rule change. The core implemented pipeline through Phase 9.1 is deterministic aside from the optional Phase 7 labeling helper, which uses an LLM only to name and summarize already-built theme clusters.
 
 ## Current Status
 
-The repository has completed deterministic work through Phase 6 for a locked three-docket EPA starter set:
+The repository has completed the current V1 pipeline through Phase 9.1 for a locked three-docket EPA starter set:
 
 - `EPA-HQ-OAR-2020-0272`
 - `EPA-HQ-OAR-2018-0225`
@@ -32,8 +32,24 @@ The current public repo contains these executable pipeline stages:
 - [`align_corpus.py`](align_corpus.py): normalize and align proposed/final rule sections, producing per-docket alignment artifacts
 - [`cluster_comments.py`](cluster_comments.py): build deterministic theme clusters from the comment corpus and existing per-docket artifacts
 - [`label_clusters.py`](label_clusters.py): optionally label existing theme clusters with short names and one-sentence descriptions using an Anthropic-compatible API
+- [`generate_outputs.py`](generate_outputs.py): consolidate per-docket artifacts into JSON, CSV, and static HTML review outputs under `outputs/`
+- [`evaluate_pipeline.py`](evaluate_pipeline.py): evaluate pipeline outputs against committed per-docket gold sets and write evaluation reports
 
 The corpus also contains generated outputs from the intermediate deterministic phases, including change-card and comment-dedup artifacts. If Phase 7 labeling is run, `comment_themes.json` is enriched with labels and descriptions, and `label_audit.json` can be generated for token and cost estimation.
+
+Phase 9.1 hardens the existing scripts with better corrupt-JSON handling, deterministic
+evaluation ranking, Unicode-safe dedup normalization, and expanded unit-test coverage.
+
+Phase 8 writes review-friendly exports under `outputs/{docket_id}/`:
+
+- `report.json`
+- `report.csv`
+- `report.html`
+
+Phase 9 writes evaluation artifacts under `outputs/{docket_id}/`:
+
+- `eval_report.json`
+- `eval_report.txt`
 
 ## Data Products Under `corpus/`
 
@@ -80,6 +96,9 @@ Run the currently checked-in deterministic stages:
 python3 fetch_corpus.py
 python3 align_corpus.py
 python3 cluster_comments.py
+python3 generate_change_cards.py
+python3 generate_outputs.py
+python3 evaluate_pipeline.py
 ```
 
 Federal Register access does not require an API key. Regulations.gov does.
@@ -98,6 +117,13 @@ python3 label_clusters.py
 ```
 
 You can also point the labeler at a local Anthropic-compatible endpoint with `--base-url`.
+
+Generate final review outputs:
+
+```bash
+python3 generate_outputs.py
+python3 evaluate_pipeline.py
+```
 
 ## Scope And Guardrails
 

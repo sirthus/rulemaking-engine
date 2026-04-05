@@ -6,6 +6,7 @@ import os
 import re
 import zlib
 from collections import defaultdict
+import unicodedata
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -17,6 +18,8 @@ DOCKET_IDS = [
     "EPA-HQ-OAR-2020-0430",
 ]
 
+# Core stopwords only are effectively kept by this script's normalization path so
+# repeated rulemaking phrases still help pull form-letter families together.
 FAMILY_TYPE_ORDER = {
     "form_letter": 0,
     "near_duplicate": 1,
@@ -46,8 +49,11 @@ def print_line(prefix: str, docket_id: str, message: str):
     print(f"[{prefix}]  {docket_id}  {message}")
 
 
+# No stopword list is used here on purpose; phrase-level duplication signals are
+# stronger when common rulemaking wording is preserved during normalization.
 def normalize_text(text: str) -> str:
-    return re.sub(r"\s+", " ", (text or "").lower()).strip()
+    text = unicodedata.normalize("NFKC", text or "")
+    return re.sub(r"\s+", " ", text.lower()).strip()
 
 
 def char_5grams(text: str) -> set[str]:
@@ -250,7 +256,7 @@ def process_docket(docket_id: str) -> dict | None:
     except FileNotFoundError:
         print_line("DEDUP", docket_id, f"error: missing required input {comments_path}")
         return None
-    except OSError as exc:
+    except (OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("DEDUP", docket_id, f"error: could not read comments input {path}")
         return None
@@ -261,7 +267,7 @@ def process_docket(docket_id: str) -> dict | None:
     print_line(
         "DEDUP",
         docket_id,
-        f"{payload['total_comments']} comments → {payload['unique_families']} families  "
+        f"{payload['total_comments']} comments -> {payload['unique_families']} families  "
         f"({payload['exact_duplicate_families']} exact, {payload['near_duplicate_families']} near-dup, "
         f"{payload['form_letter_families']} form-letter, {payload['unique_comment_families']} unique)",
     )
@@ -280,7 +286,7 @@ def main():
     print("=== Phase 5 deduplication complete ===")
     for payload in summaries:
         print(
-            f"{payload['docket_id']}   {payload['total_comments']} comments → {payload['unique_families']} families  "
+            f"{payload['docket_id']}   {payload['total_comments']} comments -> {payload['unique_families']} families  "
             f"({payload['form_letter_families']} form-letter, {payload['near_duplicate_families']} near-dup, "
             f"{payload['exact_duplicate_families']} exact, {payload['unique_comment_families']} unique)"
         )

@@ -1,0 +1,110 @@
+{
+  "docket_id": "EPA-HQ-OAR-2020-0272",
+  "annotated_at": "2026-04-05T22:05:00+00:00",
+  "annotator": "seed",
+  "notes": "Seed gold set auto-derived from pipeline output. Not a blind evaluation. Replace with human-blind annotations before reporting final metrics.",
+  "alignments": [
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0002",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0002",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ACTION:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0003",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0003",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "SUMMARY:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0004",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0004",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "DATES:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0005",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0005",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ADDRESSES:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0008",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0008",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "I. Executive Summary"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0001",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0001",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "AGENCY:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0006",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0006",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "FOR FURTHER INFORMATION CONTACT:"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0007",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0007",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "Preamble Glossary of Terms and Abbreviations"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0012",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "A. Written Comments"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0013",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "B. Participation in Virtual Public Hearing"
+    }
+  ],
+  "cluster_relevance": [
+    {
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0001",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0012",
+      "relevance": "relevant",
+      "notes": "The ACTION card inherits a directly attributed comment from the state accountability cluster."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0006",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Purpose-of-action changes are linked to comments in the main revised CSAPR Update cluster."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0008",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0013",
+      "relevance": "relevant",
+      "notes": "Costs and benefits discussion is linked to the cluster about CSAPR insufficiency and transport reduction."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0037",
+      "relevance": "relevant",
+      "notes": "The removed written-comments section is linked to a filing and download difficulties cluster through attributed comments."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0010",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0034",
+      "relevance": "relevant",
+      "notes": "The virtual hearing participation section is linked to a child respiratory health cluster via attributed comments."
+    }
+  ]
+}

@@ -31,6 +31,8 @@ DOCKET_MANIFEST = [
 ]
 
 CONTENT_GROUPS = ("preamble_style", "reg_style")
+# Core stopwords only are used here because rulemaking terms still help align
+# section headings across proposed and final documents.
 STOPWORDS = {
     "a",
     "an",
@@ -623,7 +625,13 @@ def main():
     for docket_config in DOCKET_MANIFEST:
         docket_id = docket_config["docket_id"]
         print_line("ALIGN", docket_id, "loading corpus...")
-        proposed_sections, final_sections, comments = load_inputs(docket_id)
+        try:
+            proposed_sections, final_sections, comments = load_inputs(docket_id)
+        except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
+            path = getattr(exc, "filename", None) or str(exc)
+            print_line("ALIGN", docket_id, f"error: skipping docket due to file I/O problem: {path}")
+            overall_passed = False
+            continue
         print_line(
             "ALIGN",
             docket_id,
