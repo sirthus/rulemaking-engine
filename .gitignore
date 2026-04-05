@@ -1,3 +1,5 @@
 PROJECT_STATUS.md
 __pycache__/
 .claude/
+corpus/
+cache/

@@ -10,7 +10,7 @@ This is not a system that claims to determine which comments "caused" a rule cha
 
 ## Current status
 
-Phase 0 is closed and the initial V1 docket set is locked. Phase 0.5 integration validation is also complete: the repository now contains standalone spikes for feasibility and API-integration measurement, plus generated artifacts that document the accepted three-docket EPA starter set and the external data-source behavior needed before Phase 1 pipeline work begins.
+Phase 0 is closed, Phase 0.5 integration validation is complete, and Phase 1 corpus fetch is complete. The repository now contains standalone spikes for feasibility and API-integration measurement, a locked three-docket EPA V1 starter set, and a completed corpus-fetch script that pulls Federal Register source text plus full Regulations.gov comment details into a local working corpus.
 
 ## Planned scope
 
@@ -33,8 +33,10 @@ For the full roadmap, scope discipline, phase breakdown, and implementation guar
 
 - [BLUEPRINT.md](/mnt/c/Users/dalli/github/rulemaking-engine/BLUEPRINT.md): detailed project blueprint, roadmap, and scope rules
 - [PHASE0_SCOPE_MEMO.md](/mnt/c/Users/dalli/github/rulemaking-engine/PHASE0_SCOPE_MEMO.md): short memo that closes Phase 0 and records the selected V1 dockets plus non-goals
+- [PHASE1_SPEC.md](/mnt/c/Users/dalli/github/rulemaking-engine/PHASE1_SPEC.md): Phase 1 implementation spec for corpus fetch and cache behavior
 - [feasibility_spike.py](/mnt/c/Users/dalli/github/rulemaking-engine/feasibility_spike.py): standalone Phase 0 feasibility script for docket and source validation
 - [api_integration_spike.py](/mnt/c/Users/dalli/github/rulemaking-engine/api_integration_spike.py): standalone Phase 0.5 integration script for endpoint, timing, and retrieval-pattern measurement
+- [fetch_corpus.py](/mnt/c/Users/dalli/github/rulemaking-engine/fetch_corpus.py): standalone Phase 1 script that fetches and parses FR source documents and retrieves full comment detail for the accepted dockets
 - [INTEGRATION_NOTE.md](/mnt/c/Users/dalli/github/rulemaking-engine/INTEGRATION_NOTE.md): generated integration gate document for Phase 1
 - [integration_spike_results.json](/mnt/c/Users/dalli/github/rulemaking-engine/integration_spike_results.json): machine-readable output from the integration spike
 - [feasibility_results.json](/mnt/c/Users/dalli/github/rulemaking-engine/feasibility_results.json): earlier feasibility-spike output retained as a historical artifact
@@ -65,6 +67,12 @@ Run the integration spike:
 python3 api_integration_spike.py
 ```
 
+Run the Phase 1 corpus fetch:
+
+```bash
+python3 fetch_corpus.py
+```
+
 Federal Register access does not require an API key. Regulations.gov checks do.
 
 ## Non-goals right now
@@ -77,4 +85,4 @@ Federal Register access does not require an API key. Regulations.gov checks do.
 
 ## Learn more
 
-Start with [BLUEPRINT.md](/mnt/c/Users/dalli/github/rulemaking-engine/BLUEPRINT.md) for the full product rationale, phase plan, milestones, and guardrails. For the current locked scope and the Phase 1 gate artifacts, see [PHASE0_SCOPE_MEMO.md](/mnt/c/Users/dalli/github/rulemaking-engine/PHASE0_SCOPE_MEMO.md) and [INTEGRATION_NOTE.md](/mnt/c/Users/dalli/github/rulemaking-engine/INTEGRATION_NOTE.md).
+Start with [BLUEPRINT.md](/mnt/c/Users/dalli/github/rulemaking-engine/BLUEPRINT.md) for the full product rationale, phase plan, milestones, and guardrails. For the locked scope and completed pre-Phase-2 artifacts, see [PHASE0_SCOPE_MEMO.md](/mnt/c/Users/dalli/github/rulemaking-engine/PHASE0_SCOPE_MEMO.md), [INTEGRATION_NOTE.md](/mnt/c/Users/dalli/github/rulemaking-engine/INTEGRATION_NOTE.md), and [PHASE1_SPEC.md](/mnt/c/Users/dalli/github/rulemaking-engine/PHASE1_SPEC.md).
