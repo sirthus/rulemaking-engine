@@ -899,6 +899,14 @@ change-to-cluster ranking	hybrid retrieval + semantic scoring
 
 relationship signal explanation	LLM with structured evidence inputs
 
+Local LLM note for dev/test
+
+
+
+If any LLM-dependent stage needs to be developed or tested cheaply, use ollama serve as a local OpenAI-compatible endpoint (localhost:11434). An RTX 5080 (16GB VRAM) can run 70B-class models at Q4. Switching is a base_url change only — no other code changes needed. Use this to avoid API costs during iteration before committing to a production model.
+
+
+
 Required rule
 
 
