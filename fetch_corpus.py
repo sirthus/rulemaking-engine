@@ -465,7 +465,7 @@ def parse_sections(raw_bytes: bytes, docket_id: str, fr_doc_number: str, documen
             return
 
         current_source = source_ctx
-        if tag == "PREAMBLE":
+        if tag in {"PREAMBLE", "SUPLINF"}:
             current_source = "preamble"
         elif tag == "REGTEXT":
             current_source = "regulatory_text"
@@ -493,7 +493,8 @@ def parse_sections(raw_bytes: bytes, docket_id: str, fr_doc_number: str, documen
                         paragraphs.append(text)
             body_text = "\n\n".join(normalize_whitespace(p) for p in paragraphs if normalize_whitespace(p)).strip()
             heading = normalize_whitespace(f"{sectno} {subject}")
-            add_section(current_source, heading, body_text)
+            section_source = "regulatory_text" if sectno else current_source
+            add_section(section_source, heading, body_text)
             return
 
         if tag == "P":
