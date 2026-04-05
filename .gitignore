@@ -1,4 +1,7 @@
 PROJECT_STATUS.md
+PHASE*_SPEC.md
+INTEGRATION_NOTE.md
+PHASE0_SCOPE_MEMO.md
 __pycache__/
 .claude/
 corpus/
