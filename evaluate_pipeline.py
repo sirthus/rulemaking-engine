@@ -196,6 +196,16 @@ def compute_cluster_relevance_metrics(gold: dict, change_cards: list[dict], comm
 
 
 def render_eval_report_text(report: dict) -> str:
+    if report.get("status") == "not_available":
+        return "\n".join(
+            [
+                f"=== Evaluation Report: {report['docket_id']} ===",
+                "Status: not available",
+                f"Reason: {report.get('reason', 'no_gold_set')}",
+                "",
+            ]
+        )
+
     alignment_metrics = report["alignment_metrics"]
     cluster_metrics = report["cluster_relevance_metrics"]
     p1 = cluster_metrics["precision_at_1"]
@@ -247,9 +257,24 @@ def render_eval_report_text(report: dict) -> str:
 
 def process_docket(docket_id: str, gold_dir: str, output_dir: str) -> dict | None:
     gold_path = os.path.join(gold_dir, f"{docket_id}.json")
+    output_base_dir = os.path.join(output_dir, docket_id)
+    json_output_path = os.path.join(output_base_dir, "eval_report.json")
+    text_output_path = os.path.join(output_base_dir, "eval_report.txt")
     if not os.path.exists(gold_path):
-        print_line("INFO", docket_id, "no gold set found; skipping")
-        return None
+        report = {
+            "schema_version": "v1",
+            "docket_id": docket_id,
+            "evaluated_at": utc_now_iso(),
+            "generator": "evaluate_pipeline.py",
+            "status": "not_available",
+            "reason": "no_gold_set",
+        }
+        atomic_write_json(json_output_path, report)
+        atomic_write_text(text_output_path, render_eval_report_text(report))
+        print_line("EVAL", docket_id, "no gold set found; wrote unavailable eval report")
+        print_line("EVAL", docket_id, f"written  {os.path.relpath(json_output_path, ROOT_DIR)}")
+        print_line("EVAL", docket_id, f"written  {os.path.relpath(text_output_path, ROOT_DIR)}")
+        return report
 
     base_dir = os.path.join(CORPUS_DIR, docket_id)
     try:
@@ -267,16 +292,16 @@ def process_docket(docket_id: str, gold_dir: str, output_dir: str) -> dict | Non
     cluster_relevance_metrics = compute_cluster_relevance_metrics(gold, change_cards, comment_to_cluster)
 
     report = {
+        "schema_version": "v1",
         "docket_id": docket_id,
         "evaluated_at": utc_now_iso(),
+        "generator": "evaluate_pipeline.py",
+        "status": "available",
         "gold_set_annotator": gold.get("annotator"),
         "alignment_metrics": alignment_metrics,
         "cluster_relevance_metrics": cluster_relevance_metrics,
     }
 
-    output_base_dir = os.path.join(output_dir, docket_id)
-    json_output_path = os.path.join(output_base_dir, "eval_report.json")
-    text_output_path = os.path.join(output_base_dir, "eval_report.txt")
     atomic_write_json(json_output_path, report)
     atomic_write_text(text_output_path, render_eval_report_text(report))
 
@@ -299,11 +324,14 @@ def main():
 
     print("=== Phase 9 evaluation complete ===")
     for report in reports:
-        print(
-            f"{report['docket_id']}   "
-            f"{report['alignment_metrics']['total_gold_alignments']} alignments  "
-            f"{report['cluster_relevance_metrics']['total_gold_judgments']} cluster judgments"
-        )
+        if report.get("status") == "available":
+            print(
+                f"{report['docket_id']}   "
+                f"{report['alignment_metrics']['total_gold_alignments']} alignments  "
+                f"{report['cluster_relevance_metrics']['total_gold_judgments']} cluster judgments"
+            )
+        else:
+            print(f"{report['docket_id']}   evaluation unavailable ({report.get('reason')})")
     return 0
 
 

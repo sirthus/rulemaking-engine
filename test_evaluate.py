@@ -129,6 +129,8 @@ class EvaluatePipelineTests(unittest.TestCase):
 
         with open(json_path, "r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        self.assertEqual(payload["schema_version"], "v1")
+        self.assertEqual(payload["status"], "available")
         self.assertIn("alignment_metrics", payload)
         self.assertIn("cluster_relevance_metrics", payload)
 
@@ -215,8 +217,28 @@ class EvaluatePipelineTests(unittest.TestCase):
 
         with open(json_path, "r", encoding="utf-8") as handle:
             payload = json.load(handle)
+        self.assertEqual(payload["schema_version"], "v1")
+        self.assertEqual(payload["status"], "available")
         self.assertIn("alignment_metrics", payload)
         self.assertIn("cluster_relevance_metrics", payload)
+
+    def test_missing_gold_set_writes_not_available_stub(self):
+        docket_id = "EPA-HQ-OAR-2018-0225"
+        base_dir = os.path.join(self.corpus_dir, docket_id)
+        os.makedirs(base_dir, exist_ok=True)
+        self.write_json(os.path.join(base_dir, "section_alignment.json"), [])
+        self.write_json(os.path.join(base_dir, "change_cards.json"), [])
+        self.write_json(os.path.join(base_dir, "comment_themes.json"), {"clusters": []})
+
+        report = evaluate_pipeline.process_docket(docket_id, self.gold_dir, self.output_dir)
+
+        self.assertIsNotNone(report)
+        self.assertEqual(report["status"], "not_available")
+        json_path = os.path.join(self.output_dir, docket_id, "eval_report.json")
+        with open(json_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.assertEqual(payload["schema_version"], "v1")
+        self.assertEqual(payload["reason"], "no_gold_set")
 
 
 if __name__ == "__main__":
