@@ -28,6 +28,8 @@ COMMENTER_TYPES = [
     "unknown",
 ]
 
+# Core + rulemaking-domain stopwords are used here so shared words like "rule",
+# "comment", and "EPA" do not dominate clustering or theme keyword extraction.
 STOPWORDS = {
     "a",
     "an",
@@ -311,14 +313,14 @@ def cluster_payload_for_docket(docket_id: str) -> dict | None:
 
     try:
         comments = read_json(comments_path)
-    except (FileNotFoundError, OSError) as exc:
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("THEMES", docket_id, f"error: could not read comments input {path}")
         return None
 
     try:
         dedup = read_json(dedup_path)
-    except (FileNotFoundError, OSError) as exc:
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("THEMES", docket_id, f"error: missing required dedup input {path}")
         return None
@@ -463,7 +465,7 @@ def cluster_payload_for_docket(docket_id: str) -> dict | None:
     print_line(
         "THEMES",
         docket_id,
-        f"{len(canonical_entries)} canonical comments → {len(clusters)} clusters  "
+        f"{len(canonical_entries)} canonical comments -> {len(clusters)} clusters  "
         f"({len(eligible_entries)} eligible, {len(singleton_entries)} singletons)",
     )
     print_line("THEMES", docket_id, f"commenter mix: {mix}")

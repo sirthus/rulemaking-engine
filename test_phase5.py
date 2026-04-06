@@ -32,11 +32,41 @@ class Phase5Tests(unittest.TestCase):
 
         family_sizes = sorted(family["member_count"] for family in payload["families"])
         family_types = {family["family_type"] for family in payload["families"]}
+        family_by_comment = {}
+        for family in payload["families"]:
+            for comment_id in family["member_ids"]:
+                family_by_comment[comment_id] = family["family_id"]
 
         self.assertEqual(sum(family["member_count"] for family in payload["families"]), 4)
         self.assertIn(3, family_sizes)
         self.assertIn("form_letter", family_types)
         self.assertIn("unique", family_types)
+        self.assertEqual(
+            family_by_comment["c1"],
+            family_by_comment["c2"],
+            "c1 and c2 should be in the same family",
+        )
+        self.assertEqual(
+            family_by_comment["c1"],
+            family_by_comment["c3"],
+            "c1 and c3 should be in the same family",
+        )
+
+    def test_dedup_normalizes_unicode_variants(self):
+        payload = dedup_comments.build_family_payload(
+            "TEST-DOCKET",
+            [
+                {"comment_id": "c1", "text": "Efficient\u00a0filtration is required.", "posted_date": "2024-01-01"},
+                {"comment_id": "c2", "text": "Efficient filtration is required.", "posted_date": "2024-01-02"},
+            ],
+        )
+
+        family_by_comment = {}
+        for family in payload["families"]:
+            for comment_id in family["member_ids"]:
+                family_by_comment[comment_id] = family["family_id"]
+
+        self.assertEqual(family_by_comment["c1"], family_by_comment["c2"])
 
     def test_build_alignment_signal_uses_family_dedup(self):
         card = {

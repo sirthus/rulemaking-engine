@@ -3,6 +3,7 @@
 import argparse
 import json
 import os
+import re
 import time
 from datetime import datetime, timezone
 
@@ -25,6 +26,7 @@ INPUT_COST_PER_MILLION = 0.80
 OUTPUT_COST_PER_MILLION = 4.00
 MAX_EXCERPTS = 3
 MAX_EXCERPT_CHARS = 400
+DEFAULT_MAX_TOKENS = 1024
 
 SYSTEM_PROMPT = """You are analyzing public comments submitted to an EPA rulemaking docket.
 Given a cluster of related comments described by keywords, commenter types, and
@@ -72,6 +74,8 @@ def parse_args():
     parser.add_argument("--docket", choices=DOCKET_IDS, help="Process a single docket.")
     parser.add_argument("--base-url", help="Override the Anthropic-compatible base URL.")
     parser.add_argument("--model", default=DEFAULT_MODEL, help="Model identifier to use for labeling.")
+    parser.add_argument("--max-tokens", type=int, default=DEFAULT_MAX_TOKENS, help="Max tokens for each labeling call (default: 1024).")
+    parser.add_argument("--no-think", action="store_true", help="Append /no_think to prompts (suppresses thinking mode on Ollama Qwen3 models).")
     return parser.parse_args()
 
 
@@ -138,6 +142,9 @@ def build_user_message(docket_id: str, cluster: dict, comments_by_id: dict[str, 
 def extract_response_text(response) -> str:
     blocks = []
     for block in getattr(response, "content", []) or []:
+        # Skip thinking blocks (Qwen3 and other reasoning models)
+        if getattr(block, "type", None) == "thinking":
+            continue
         text = getattr(block, "text", None)
         if text:
             blocks.append(text)
@@ -145,7 +152,21 @@ def extract_response_text(response) -> str:
 
 
 def parse_label_json(raw_text: str) -> tuple[str | None, str | None]:
-    payload = json.loads(raw_text)
+    cleaned = (raw_text or "").strip()
+    if cleaned.startswith("```"):
+        fence_match = re.match(r"^```(?:json)?\s*(.*?)\s*```$", cleaned, re.DOTALL)
+        if fence_match:
+            cleaned = fence_match.group(1).strip()
+
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start == -1 or end == -1 or end < start:
+            raise
+        payload = json.loads(cleaned[start : end + 1])
+
     label = payload.get("label")
     description = payload.get("description")
     if isinstance(label, str):
@@ -184,14 +205,14 @@ def run_audit_for_docket(client: anthropic.Anthropic, docket_id: str, model: str
 
     try:
         themes = read_json(themes_path)
-    except (FileNotFoundError, OSError) as exc:
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("ERROR", docket_id, f"missing required theme input {path}")
         return None
 
     try:
         comments = read_json(comments_path)
-    except (FileNotFoundError, OSError):
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
         comments = []
 
     comments_by_id = {comment.get("comment_id"): comment for comment in comments if comment.get("comment_id")}
@@ -239,9 +260,17 @@ def label_cluster(
     cluster: dict,
     comments_by_id: dict[str, dict],
     model: str,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+    no_think: bool = False,
 ) -> tuple[str | None, str | None, dict]:
     base_message = build_user_message(docket_id, cluster, comments_by_id)
-    attempts = [base_message, base_message + "\n\nRespond with valid JSON only, no text before or after."]
+    if no_think:
+        base_message += "\n\n/no_think"
+    retry_suffix = "\n\nRespond with valid JSON only, no text before or after."
+    if no_think:
+        retry_suffix += "\n\n/no_think"
+    retry_message = base_message + retry_suffix
+    attempts = [base_message, retry_message]
 
     for user_message in attempts:
         for rate_attempt in range(1, 5):
@@ -250,7 +279,7 @@ def label_cluster(
                     model=model,
                     system=SYSTEM_PROMPT,
                     messages=[{"role": "user", "content": user_message}],
-                    max_tokens=150,
+                    max_tokens=max_tokens,
                 )
                 raw_text = extract_response_text(response)
                 label, description = parse_label_json(raw_text)
@@ -306,6 +335,8 @@ def process_docket(
     docket_id: str,
     model: str,
     force: bool,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+    no_think: bool = False,
 ) -> dict | None:
     base_dir = os.path.join(CORPUS_DIR, docket_id)
     themes_path = os.path.join(base_dir, "comment_themes.json")
@@ -313,14 +344,14 @@ def process_docket(
 
     try:
         themes = read_json(themes_path)
-    except (FileNotFoundError, OSError) as exc:
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("ERROR", docket_id, f"missing required theme input {path}")
         return None
 
     try:
         comments = read_json(comments_path)
-    except (FileNotFoundError, OSError) as exc:
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
         path = getattr(exc, "filename", None) or str(exc)
         print_line("WARN", docket_id, f"missing comments input {path}; proceeding without excerpts")
         comments = []
@@ -340,20 +371,17 @@ def process_docket(
             continue
 
         print_line("LABEL", docket_id, f"{index}/{len(clusters)}  {cluster_id}")
-        label, description, label_meta = label_cluster(client, docket_id, cluster, comments_by_id, model)
-        if label is None or description is None:
-            failed += 1
-        else:
-            cluster["label"] = label
-            cluster["label_description"] = description
-            labeled += 1
-
+        label, description, label_meta = label_cluster(client, docket_id, cluster, comments_by_id, model, max_tokens=max_tokens, no_think=no_think)
+        cluster["label"] = label
+        cluster["label_description"] = description
         cluster["label_meta"] = label_meta
         total_input_tokens += int(label_meta.get("input_tokens", 0) or 0)
         total_output_tokens += int(label_meta.get("output_tokens", 0) or 0)
 
-        if label is None and "label_description" not in cluster:
-            cluster["label_description"] = None
+        if label is None:
+            failed += 1
+        else:
+            labeled += 1
 
     themes["processing_run"] = {
         "phase": "7",
@@ -419,7 +447,7 @@ def main():
     total_input_tokens = 0
     total_output_tokens = 0
     for docket_id in docket_ids:
-        summary = process_docket(client, docket_id, args.model, args.force)
+        summary = process_docket(client, docket_id, args.model, args.force, max_tokens=args.max_tokens, no_think=args.no_think)
         if summary is None:
             continue
         summaries.append(summary)
