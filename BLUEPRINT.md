@@ -885,25 +885,39 @@ chunk extraction	deterministic code + heuristics
 
 structural alignment	deterministic rules
 
-fallback semantic alignment	embeddings and/or LLM assistance
+fallback semantic alignment	local embeddings and/or local batch LLM assistance
 
-change classification	LLM-assisted or hybrid
+change classification	local batch LLM-assisted or hybrid
 
 exact/near dedup	deterministic hashing/similarity
 
-semantic dedup of remainder	embeddings
+semantic dedup of remainder	local embeddings
 
-cluster labeling/summarization	LLM
+cluster labeling/summarization	local batch LLM
 
-change-to-cluster ranking	hybrid retrieval + semantic scoring
+change-to-cluster ranking	hybrid retrieval + local semantic scoring
 
-relationship signal explanation	LLM with structured evidence inputs
+relationship signal explanation	local batch LLM with structured evidence inputs
 
-Local LLM note for dev/test
+Local batch LLM policy
 
 
 
-If any LLM-dependent stage needs to be developed or tested cheaply, use ollama serve as a local OpenAI-compatible endpoint (localhost:11434). An RTX 5080 (16GB VRAM) can run 70B-class models at Q4. Switching is a base_url change only — no other code changes needed. Use this to avoid API costs during iteration before committing to a production model.
+For V1, all LLM-dependent stages should run offline in local batches and write durable artifacts back into the corpus/output pipeline. There should be no live model API in the product path. The intended operating model is:
+
+
+
+run deterministic ingestion and analysis locally
+
+run local Ollama batch jobs for the LLM-dependent stages
+
+persist the results as versioned artifacts
+
+publish a clean JSON snapshot for the future site to read
+
+
+
+The future site should consume published snapshot data, not invoke a model directly.
 
 
 
@@ -1106,6 +1120,8 @@ JSON export
 CSV export
 
 static HTML report or very simple local review page
+
+published JSON snapshot for the site
 
 
 

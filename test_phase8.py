@@ -54,6 +54,20 @@ class Phase8Tests(unittest.TestCase):
             },
         )
         self.write_json(
+            os.path.join(base_dir, "label_run.json"),
+            {
+                "schema_version": "v1",
+                "phase": "7",
+                "runtime": "ollama",
+                "model": "qwen3:14b",
+                "prompt_version": "v1",
+                "completed_at": "2026-04-05T18:00:00+00:00",
+                "total_input_tokens": 111,
+                "total_output_tokens": 22,
+                "no_think": True,
+            },
+        )
+        self.write_json(
             os.path.join(base_dir, "change_cards.json"),
             [
                 {
@@ -150,12 +164,15 @@ class Phase8Tests(unittest.TestCase):
         with open(json_path, "r", encoding="utf-8") as handle:
             report = json.load(handle)
 
+        self.assertEqual(report["schema_version"], "v1")
         self.assertEqual(report["summary"]["total_comments"], 14)
         self.assertEqual(report["summary"]["labeled_clusters"], 1)
         self.assertEqual(report["summary"]["total_change_cards"], 1)
         self.assertEqual(report["summary"]["change_type_counts"]["modified"], 1)
         self.assertEqual(report["summary"]["alignment_signal_counts"]["high"], 1)
         self.assertEqual(report["summary"]["comment_attribution_stats"]["attributed"], 2)
+        self.assertEqual(report["summary"]["labeling"]["model"], "qwen3:14b")
+        self.assertEqual(report["summary"]["labeling"]["total_input_tokens"], 111)
         self.assertEqual(report["change_cards"][0]["related_clusters"][0]["comment_count"], 2)
         self.assertEqual(
             report["change_cards"][0]["related_clusters"][0]["label"],
@@ -215,9 +232,11 @@ class Phase8Tests(unittest.TestCase):
         with open(json_path, "r", encoding="utf-8") as handle:
             report = json.load(handle)
 
+        self.assertEqual(report["schema_version"], "v1")
         self.assertEqual(report["change_cards"], [])
         self.assertEqual(report["summary"]["total_change_cards"], 0)
         self.assertIn("notes", report["summary"])
+        self.assertNotIn("labeling", report["summary"])
         self.assertIn("change_cards.json not found", report["summary"]["notes"][0])
 
         with open(csv_path, "r", encoding="utf-8-sig", newline="") as handle:

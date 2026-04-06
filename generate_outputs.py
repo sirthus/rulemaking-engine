@@ -281,6 +281,7 @@ def build_summary(
     change_cards_missing: bool,
     comment_attribution,
     alignment_log,
+    label_run,
 ) -> dict:
     clusters = themes.get("clusters", [])
 
@@ -323,6 +324,18 @@ def build_summary(
 
     if "comment_attribution_stats" not in summary and isinstance(comment_attribution, list):
         summary["comment_attribution_stats"] = compute_comment_attribution_stats(comment_attribution)
+
+    labeling_source = label_run if isinstance(label_run, dict) else themes.get("processing_run")
+    if isinstance(labeling_source, dict) and labeling_source.get("phase") == "7":
+        summary["labeling"] = {
+            "runtime": labeling_source.get("runtime") or "ollama",
+            "model": labeling_source.get("model"),
+            "prompt_version": labeling_source.get("prompt_version"),
+            "labeled_at": labeling_source.get("completed_at") or labeling_source.get("labeled_at"),
+            "total_input_tokens": labeling_source.get("total_input_tokens", 0),
+            "total_output_tokens": labeling_source.get("total_output_tokens", 0),
+            "no_think": bool(labeling_source.get("no_think")),
+        }
 
     return summary
 
@@ -827,6 +840,7 @@ def process_docket(docket_id: str, output_dir: str, force: bool) -> dict | None:
     raw_cards = change_cards if isinstance(change_cards, list) else []
     comment_attribution = load_optional_json(os.path.join(base_dir, "comment_attribution.json"))
     alignment_log = load_optional_json(os.path.join(base_dir, "alignment_log.json"))
+    label_run = load_optional_json(os.path.join(base_dir, "label_run.json"))
 
     clusters_by_id, comment_to_cluster = build_cluster_lookups(themes)
     exported_clusters = export_clusters(themes)
@@ -837,6 +851,7 @@ def process_docket(docket_id: str, output_dir: str, force: bool) -> dict | None:
         exported_cards.append(build_export_card(card, related_clusters))
 
     report_payload = {
+        "schema_version": "v1",
         "docket_id": docket_id,
         "generated_at": utc_now_iso(),
         "generator": "generate_outputs.py",
@@ -846,6 +861,7 @@ def process_docket(docket_id: str, output_dir: str, force: bool) -> dict | None:
             change_cards_missing,
             comment_attribution,
             alignment_log,
+            label_run,
         ),
         "clusters": exported_clusters,
         "change_cards": exported_cards,
