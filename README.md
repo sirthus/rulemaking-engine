@@ -242,9 +242,17 @@ Current non-goals:
 - no browser editing workflow
 - no causal claim that comments determined a rule change
 
-## Local-Only Working Docs
+## Portable Handoff Docs
 
-Planner handoff notes, phase specs, and local implementation trackers are intentionally kept out of GitHub. That includes `PROJECT_STATUS.md` and `PHASE*_SPEC.md`.
+The implementation handoff docs are tracked in Git so another machine can pull the repo and know what to do next:
+
+- `PROJECT_STATUS.md`: current state, accepted architecture decisions, verification notes, and next tasks
+- `PHASE8_SPEC.md`: report/output generation implementation contract
+- `PHASE9_SPEC.md`: evaluation harness implementation contract
+- `PHASE9.1_SPEC.md`: hardening and review-fix implementation contract
+- `PHASE10_SPEC.md`: React snapshot site, Ollama ops, and blind-evaluation workflow contract
+
+If a fresh checkout is unclear, read `PROJECT_STATUS.md` first, then `BLUEPRINT.md`, then the latest phase spec.
 
 ## Roadmap
 

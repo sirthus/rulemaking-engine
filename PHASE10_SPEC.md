@@ -2,6 +2,8 @@
 
 Local-only Phase 10 implementation contract.
 
+Status: implemented and tracked in Git. The remaining Phase 10 follow-through is blind human annotation coverage, not site or runtime plumbing.
+
 ## Goals
 
 - static React site under `site_app/`

@@ -4,11 +4,13 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Coordination
 
-This project uses `PROJECT_STATUS.md` as the live local handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active blockers, and the next recommended task.
+This project uses `PROJECT_STATUS.md` as the tracked handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active blockers, and the next recommended task.
+
+The phase specs are also tracked in Git for cross-machine continuity: `PHASE8_SPEC.md`, `PHASE9_SPEC.md`, `PHASE9.1_SPEC.md`, and `PHASE10_SPEC.md`.
 
 ## Current implementation state
 
-As of 2026-04-05, the repo is implemented through Phase 10. The operating architecture is now:
+As of 2026-04-06, the repo is implemented through Phase 10. The operating architecture is now:
 
 - deterministic pipeline stages build local corpus artifacts
 - Phase 7 labeling runs only against a local Ollama daemon

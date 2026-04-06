@@ -25,6 +25,78 @@ The product is not “AI determines which comments caused the rule change.”
 
 The product is traceable rule evolution plus comment-theme alignment.
 
+Current implemented state as of 2026-04-06
+
+
+
+The repo is implemented through Phase 10.
+
+
+
+The current product shape is:
+
+
+
+deterministic local pipeline stages build `corpus/` artifacts
+
+Phase 7 cluster labeling runs as a local Ollama batch job only
+
+operator review artifacts are written under `outputs/`
+
+site-safe JSON snapshots are published under `site_data/current/`
+
+a static React app under `site_app/` reads only from `site_data/current/`
+
+there is no live model API, backend web application, SSR requirement, or browser-side inference in the V1 product path
+
+
+
+The tracked cross-machine handoff docs are:
+
+
+
+`PROJECT_STATUS.md`
+
+`PHASE8_SPEC.md`
+
+`PHASE9_SPEC.md`
+
+`PHASE9.1_SPEC.md`
+
+`PHASE10_SPEC.md`
+
+
+
+Immediate next blueprint work
+
+
+
+The next work is evaluation maturity, not new product architecture.
+
+
+
+Complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`.
+
+Replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation before using metrics externally.
+
+Rerun evaluation and `refresh_site_snapshot.py --model qwen3:14b` after gold-set updates.
+
+Verify the React site against the refreshed multi-docket snapshot.
+
+Only after evaluation quality is stronger, consider richer relationship-ranking, reviewer workflow, or explanation stages.
+
+
+
+Expected current evaluation state
+
+
+
+Only `EPA-HQ-OAR-2020-0272` has a committed gold set today.
+
+
+
+Therefore `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430` should publish `eval_report.json` with `status: "not_available"` and a no-gold-set reason until blind gold sets are completed.
+
 
 
 Core scope discipline
