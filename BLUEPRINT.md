@@ -1003,6 +1003,18 @@ Turn the local pipeline into a usable local product surface without changing the
 
 
 
+Status
+
+
+
+Implemented as of 2026-04-06.
+
+
+
+The remaining Phase 10 follow-through is blind human annotation coverage, not React site plumbing or Ollama runtime plumbing.
+
+
+
 Phase 10 scope
 
 
@@ -1075,7 +1087,7 @@ Ollama operator hardening
 
 
 
-Phase 10 should add:
+Implemented in Phase 10:
 
 
 
@@ -1093,7 +1105,7 @@ Blind evaluation workflow
 
 
 
-Phase 10 should also add:
+Implemented in Phase 10:
 
 
 
@@ -1107,7 +1119,19 @@ evaluation provenance describing whether a gold set is seed-derived or blind hum
 
 
 
-This remains a manual human annotation workflow. The repo should support the mechanics, not replace the reviewer.
+This remains a manual human annotation workflow. The repo supports the mechanics, not the annotation judgment itself.
+
+
+
+Remaining evaluation work after Phase 10:
+
+
+
+complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+
+replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation
+
+rerun evaluation and refresh the published snapshot after each gold-set update
 
 
 
@@ -1115,7 +1139,7 @@ Implementation note
 
 
 
-Once the static React site exists, it should be tolerant of published snapshot evolution within the declared `schema_version` boundary. Narrow compatibility shims are acceptable for legacy V1 snapshot payloads, but the main operator path should still refresh and republish the latest snapshot rather than relying on compatibility indefinitely.
+The static React site should be tolerant of published snapshot evolution within the declared `schema_version` boundary. Narrow compatibility shims are acceptable for legacy V1 snapshot payloads, but the main operator path should still refresh and republish the latest snapshot rather than relying on compatibility indefinitely.
 
 
 
@@ -1135,7 +1159,7 @@ log token usage
 
 support caching
 
-attach outputs to ProcessingRun
+attach outputs to ProcessingRun where a formal ProcessingRun record exists; until that model exists, write explicit stage run artifacts such as `label_run.json` and `release_summary.json`
 
 Milestone sequence
 
@@ -1335,6 +1359,14 @@ Static React snapshot site + blind evaluation workflow
 
 
 
+Status:
+
+
+
+Implemented as of 2026-04-06.
+
+
+
 Done when:
 
 
@@ -1350,6 +1382,18 @@ Ollama preflight/model-profile behavior is shared across the local operator flow
 release summaries are written into published snapshots
 
 gold-set packets and validation tooling exist for blind annotation work
+
+
+
+Remaining after Milestone 10:
+
+
+
+blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+
+blind human replacement for the seed-derived `EPA-HQ-OAR-2020-0272` gold set
+
+evaluation refresh and published snapshot refresh after those annotations exist
 
 
 
@@ -1460,4 +1504,8 @@ review\_status flag + filter only
 token/cost audit on one docket
 
 JSON/CSV/static HTML output
+
+published JSON snapshots under `site_data/current/`
+
+static React snapshot site under `site_app/`
 
