@@ -78,6 +78,7 @@ class EvaluatePipelineTests(unittest.TestCase):
             {
                 "docket_id": docket_id,
                 "annotator": "seed",
+                "annotated_at": "2026-04-05T22:05:00+00:00",
                 "alignments": [
                     {
                         "proposed_section_id": "p1",
@@ -131,6 +132,7 @@ class EvaluatePipelineTests(unittest.TestCase):
             payload = json.load(handle)
         self.assertEqual(payload["schema_version"], "v1")
         self.assertEqual(payload["status"], "available")
+        self.assertEqual(payload["gold_set_provenance"]["annotation_method"], "seed_derived")
         self.assertIn("alignment_metrics", payload)
         self.assertIn("cluster_relevance_metrics", payload)
 
@@ -182,7 +184,10 @@ class EvaluatePipelineTests(unittest.TestCase):
             os.path.join(self.gold_dir, f"{docket_id}.json"),
             {
                 "docket_id": docket_id,
-                "annotator": "seed",
+                "annotator": "reviewer-a",
+                "annotated_at": "2026-04-06T01:00:00+00:00",
+                "annotation_method": "blind_human",
+                "blinded": True,
                 "alignments": [],
                 "cluster_relevance": [
                     {
@@ -219,6 +224,8 @@ class EvaluatePipelineTests(unittest.TestCase):
             payload = json.load(handle)
         self.assertEqual(payload["schema_version"], "v1")
         self.assertEqual(payload["status"], "available")
+        self.assertEqual(payload["gold_set_provenance"]["annotation_method"], "blind_human")
+        self.assertTrue(payload["gold_set_provenance"]["blinded"])
         self.assertIn("alignment_metrics", payload)
         self.assertIn("cluster_relevance_metrics", payload)
 
@@ -239,6 +246,27 @@ class EvaluatePipelineTests(unittest.TestCase):
             payload = json.load(handle)
         self.assertEqual(payload["schema_version"], "v1")
         self.assertEqual(payload["reason"], "no_gold_set")
+
+    def test_invalid_gold_set_returns_none(self):
+        docket_id = "EPA-HQ-OAR-2020-0272"
+        base_dir = os.path.join(self.corpus_dir, docket_id)
+        os.makedirs(base_dir, exist_ok=True)
+        self.write_json(os.path.join(base_dir, "section_alignment.json"), [])
+        self.write_json(os.path.join(base_dir, "change_cards.json"), [])
+        self.write_json(os.path.join(base_dir, "comment_themes.json"), {"clusters": []})
+        self.write_json(
+            os.path.join(self.gold_dir, f"{docket_id}.json"),
+            {
+                "docket_id": docket_id,
+                "annotator": "reviewer-a",
+                "alignments": [{"proposed_section_id": "p1"}],
+                "cluster_relevance": [],
+            },
+        )
+
+        report = evaluate_pipeline.process_docket(docket_id, self.gold_dir, self.output_dir)
+
+        self.assertIsNone(report)
 
 
 if __name__ == "__main__":

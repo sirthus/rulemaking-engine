@@ -25,6 +25,78 @@ The product is not “AI determines which comments caused the rule change.”
 
 The product is traceable rule evolution plus comment-theme alignment.
 
+Current implemented state as of 2026-04-06
+
+
+
+The repo is implemented through Phase 10.
+
+
+
+The current product shape is:
+
+
+
+deterministic local pipeline stages build `corpus/` artifacts
+
+Phase 7 cluster labeling runs as a local Ollama batch job only
+
+operator review artifacts are written under `outputs/`
+
+site-safe JSON snapshots are published under `site_data/current/`
+
+a static React app under `site_app/` reads only from `site_data/current/`
+
+there is no live model API, backend web application, SSR requirement, or browser-side inference in the V1 product path
+
+
+
+The tracked cross-machine handoff docs are:
+
+
+
+`PROJECT_STATUS.md`
+
+`PHASE8_SPEC.md`
+
+`PHASE9_SPEC.md`
+
+`PHASE9.1_SPEC.md`
+
+`PHASE10_SPEC.md`
+
+
+
+Immediate next blueprint work
+
+
+
+The next work is evaluation maturity, not new product architecture.
+
+
+
+Complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`.
+
+Replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation before using metrics externally.
+
+Rerun evaluation and `refresh_site_snapshot.py --model qwen3:14b` after gold-set updates.
+
+Verify the React site against the refreshed multi-docket snapshot.
+
+Only after evaluation quality is stronger, consider richer relationship-ranking, reviewer workflow, or explanation stages.
+
+
+
+Expected current evaluation state
+
+
+
+Only `EPA-HQ-OAR-2020-0272` has a committed gold set today.
+
+
+
+Therefore `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430` should publish `eval_report.json` with `status: "not_available"` and a no-gold-set reason until blind gold sets are completed.
+
 
 
 Core scope discipline
@@ -51,7 +123,7 @@ no eCFR integration
 
 no chat interface
 
-no frontend application beyond basic reports or simple filtering views
+no backend web application or live model-backed frontend
 
 Schema vs operational scope
 
@@ -921,6 +993,156 @@ The future site should consume published snapshot data, not invoke a model direc
 
 
 
+Phase 10 — Static React snapshot site, Ollama ops hardening, and blind evaluation workflow
+
+Goal
+
+
+
+Turn the local pipeline into a usable local product surface without changing the core architecture.
+
+
+
+Status
+
+
+
+Implemented as of 2026-04-06.
+
+
+
+The remaining Phase 10 follow-through is blind human annotation coverage, not React site plumbing or Ollama runtime plumbing.
+
+
+
+Phase 10 scope
+
+
+
+Allow a static React site after the snapshot contract is stable.
+
+
+
+The site must:
+
+
+
+read only from `site_data/current/`
+
+remain read-only in the browser
+
+have no backend service
+
+have no server-side rendering requirement
+
+have no live model calls
+
+In local development and static builds, the published snapshot may be served or copied alongside the React assets, but it must remain the same snapshot contract and not become a backend API layer.
+
+
+
+Initial routes:
+
+
+
+`/`
+
+`/dockets/:docketId`
+
+`/dockets/:docketId/cards/:cardId`
+
+
+
+Site responsibilities:
+
+
+
+show docket summaries
+
+show cluster labels and descriptions
+
+show change cards with simple client-side filters
+
+show evaluation available vs not available state
+
+deep-link to individual change cards
+
+
+
+Not in scope for Phase 10 site:
+
+
+
+no in-browser editing of `review_status`
+
+no reviewer login
+
+no persistence layer
+
+no live inference tools
+
+
+
+Ollama operator hardening
+
+
+
+Implemented in Phase 10:
+
+
+
+shared model profiles for validated local models
+
+an Ollama preflight check used by the labeler and refresh workflow
+
+explicit operator guidance for missing models or stopped daemons
+
+release summaries that record model profile, token totals, and publish metadata
+
+
+
+Blind evaluation workflow
+
+
+
+Implemented in Phase 10:
+
+
+
+blinded annotation packet generation from published snapshot data plus source artifacts
+
+editable gold-set templates
+
+gold-set validation before evaluation
+
+evaluation provenance describing whether a gold set is seed-derived or blind human annotation
+
+
+
+This remains a manual human annotation workflow. The repo supports the mechanics, not the annotation judgment itself.
+
+
+
+Remaining evaluation work after Phase 10:
+
+
+
+complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+
+replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation
+
+rerun evaluation and refresh the published snapshot after each gold-set update
+
+
+
+Implementation note
+
+
+
+The static React site should be tolerant of published snapshot evolution within the declared `schema_version` boundary. Narrow compatibility shims are acceptable for legacy V1 snapshot payloads, but the main operator path should still refresh and republish the latest snapshot rather than relying on compatibility indefinitely.
+
+
+
 Required rule
 
 
@@ -937,7 +1159,7 @@ log token usage
 
 support caching
 
-attach outputs to ProcessingRun
+attach outputs to ProcessingRun where a formal ProcessingRun record exists; until that model exists, write explicit stage run artifacts such as `label_run.json` and `release_summary.json`
 
 Milestone sequence
 
@@ -1129,6 +1351,52 @@ Not a full frontend.
 
 
 
+Milestone 10
+
+
+
+Static React snapshot site + blind evaluation workflow
+
+
+
+Status:
+
+
+
+Implemented as of 2026-04-06.
+
+
+
+Done when:
+
+
+
+the React site reads only from `site_data/current/`
+
+the site supports docket list, docket detail, and card detail routes
+
+the site exposes read-only filters for change cards and clusters
+
+Ollama preflight/model-profile behavior is shared across the local operator flow
+
+release summaries are written into published snapshots
+
+gold-set packets and validation tooling exist for blind annotation work
+
+
+
+Remaining after Milestone 10:
+
+
+
+blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+
+blind human replacement for the seed-derived `EPA-HQ-OAR-2020-0272` gold set
+
+evaluation refresh and published snapshot refresh after those annotations exist
+
+
+
 Claude Code implementation guardrails
 
 Required instructions
@@ -1155,9 +1423,7 @@ Explicit prohibitions
 
 Tell Claude Code not to generate:
 
-
-
-React frontend in early milestones
+React frontend in early milestones before the snapshot contract is stable
 
 LangChain, LlamaIndex, or orchestration frameworks
 
@@ -1197,6 +1463,14 @@ rich review workflow
 
 polished web application
 
+
+
+Clarification
+
+
+
+A static React snapshot viewer is allowed after Milestone 8 artifacts are stable. A polished or backend-driven web application remains deferred.
+
 Recommended V1 slice
 
 
@@ -1230,4 +1504,8 @@ review\_status flag + filter only
 token/cost audit on one docket
 
 JSON/CSV/static HTML output
+
+published JSON snapshots under `site_data/current/`
+
+static React snapshot site under `site_app/`
 

@@ -4,28 +4,32 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Coordination
 
-This project uses `PROJECT_STATUS.md` as the live local handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active blockers, and the next recommended task.
+This project uses `PROJECT_STATUS.md` as the tracked handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active blockers, and the next recommended task.
+
+The phase specs are also tracked in Git for cross-machine continuity: `PHASE8_SPEC.md`, `PHASE9_SPEC.md`, `PHASE9.1_SPEC.md`, and `PHASE10_SPEC.md`.
 
 ## Current implementation state
 
-As of 2026-04-05, the repo is implemented through Phase 9.1. The operating architecture is now:
+As of 2026-04-06, the repo is implemented through Phase 10. The operating architecture is now:
 
 - deterministic pipeline stages build local corpus artifacts
 - Phase 7 labeling runs only against a local Ollama daemon
 - review artifacts are generated under `outputs/`
 - published site-safe JSON snapshots are generated under `site_data/`
+- a static React app under `site_app/` reads only from `site_data/current/`
+- Vite serves the published snapshot in local dev and copies it into production builds
 - there is no live model API in the product runtime path
 
 ## Supported local LLM runtime
 
 Only Ollama is supported for product LLM work in V1.
 
-Validated local models:
+Validated local model profiles:
 
 - default operator model: `qwen3:14b`
 - faster alternative: `gemma3:12b-it-q8_0`
 
-`qwen3:14b` should generally be run with `--no-think`. The refresh script applies that automatically for Qwen3 models.
+`qwen3:14b` should generally be run with `--no-think` when calling `label_clusters.py` directly. `refresh_site_snapshot.py` resolves that behavior automatically through the shared model profile.
 
 ## Accepted V1 docket set
 
@@ -45,11 +49,19 @@ python align_corpus.py
 python dedup_comments.py
 python generate_change_cards.py
 python cluster_comments.py
-python label_clusters.py --model qwen3:14b --no-think
-python generate_outputs.py
-python evaluate_pipeline.py
-python publish_site_snapshot.py
 python refresh_site_snapshot.py --model qwen3:14b
+python prepare_gold_set_packet.py --docket EPA-HQ-OAR-2020-0430
+python validate_gold_set.py --docket EPA-HQ-OAR-2020-0430 --path gold_set/EPA-HQ-OAR-2020-0430.json
+```
+
+Frontend workspace:
+
+```bash
+cd site_app
+npm install
+npm test
+npm run build
+npm run dev
 ```
 
 Federal Register does not require an API key. Regulations.gov does. Missing or invalid Regulations.gov credentials must never be treated as proof that comment text is absent.
@@ -58,10 +70,12 @@ Federal Register does not require an API key. Regulations.gov does. Missing or i
 
 - Keep the product artifact-first and local-first.
 - Do not reintroduce cloud model configuration or remote model credentials into the product path.
-- The future site should read `site_data/current/...` JSON only.
+- The site must read `site_data/current/...` JSON only.
 - `outputs/` is for operator review artifacts, not for the live site data contract.
 - `site_data/` is a publish boundary, not a source-of-truth code asset.
-- No live chat interface, no live inference backend, and no speculative orchestration layer.
+- The React site is static and read-only in Phase 10.
+- Do not add a backend service, SSR requirement, or live inference backend.
+- Small compatibility shims for older published V1 snapshot payloads are acceptable, but the normal operator path should always refresh and republish the latest snapshot.
 
 ## Coordination with Codex
 

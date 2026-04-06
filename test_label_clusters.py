@@ -255,6 +255,8 @@ class LabelClustersTests(unittest.TestCase):
         self.assertIsNone(cluster["label_description"])
         self.assertEqual(label_run["schema_version"], "v1")
         self.assertEqual(label_run["failed"], 1)
+        self.assertEqual(label_run["model_profile"]["model"], "test-model")
+        self.assertEqual(label_run["model_profile"]["status"], "experimental")
         self.assertEqual(label_run["clusters"][0]["status"], "failed")
         self.assertEqual(label_run["clusters"][0]["input_tokens"], 7)
 
