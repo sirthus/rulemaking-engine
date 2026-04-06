@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 
 import requests
 
+import ollama_runtime
+
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
@@ -361,6 +363,7 @@ def build_processing_run(
     docket_id: str,
     client: OllamaClient,
     model: str,
+    model_profile: dict | None,
     no_think: bool,
     started_at: str,
     completed_at: str,
@@ -382,6 +385,7 @@ def build_processing_run(
         "runtime": "ollama",
         "docket_id": docket_id,
         "model": model,
+        "model_profile": ollama_runtime.profile_for_manifest(model_profile),
         "prompt_version": PROMPT_VERSION,
         "ollama_url": client.ollama_url,
         "no_think": no_think,
@@ -407,6 +411,7 @@ def process_docket(
     model: str,
     force: bool,
     no_think: bool = False,
+    model_profile: dict | None = None,
 ) -> dict | None:
     base_dir = os.path.join(CORPUS_DIR, docket_id)
     themes_path = os.path.join(base_dir, "comment_themes.json")
@@ -485,6 +490,7 @@ def process_docket(
         docket_id,
         client,
         model,
+        model_profile or ollama_runtime.resolve_model_profile(model),
         no_think,
         started_at,
         completed_at,
@@ -530,6 +536,9 @@ def process_docket(
         "output_tokens": total_output_tokens,
         "total_duration_ms": round(total_duration_ms, 1),
         "wall_clock_ms": round(wall_clock_ms, 1),
+        "model_profile": ollama_runtime.profile_for_manifest(
+            model_profile or ollama_runtime.resolve_model_profile(model)
+        ),
     }
 
 
@@ -537,6 +546,15 @@ def main():
     args = parse_args()
     docket_ids = [args.docket] if args.docket else DOCKET_IDS
     client = OllamaClient(args.ollama_url)
+    preflight = ollama_runtime.run_preflight(
+        args.ollama_url,
+        args.model,
+        session=getattr(client, "session", None),
+        timeout_seconds=getattr(client, "timeout_seconds", ollama_runtime.DEFAULT_TIMEOUT_SECONDS),
+    )
+    model_profile = preflight["profile"]
+    for line in ollama_runtime.preflight_summary_lines(preflight):
+        print(f"[PREFLIGHT]  {line}")
 
     summaries = []
     total_input_tokens = 0
@@ -550,6 +568,7 @@ def main():
             args.model,
             args.force,
             no_think=args.no_think,
+            model_profile=model_profile,
         )
         if summary is None:
             continue

@@ -9,3 +9,7 @@ corpus/
 cache/
 outputs/
 site_data/
+gold_set/packets/
+gold_set/templates/
+site_app/node_modules/
+site_app/dist/

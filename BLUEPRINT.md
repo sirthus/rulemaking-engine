@@ -51,7 +51,7 @@ no eCFR integration
 
 no chat interface
 
-no frontend application beyond basic reports or simple filtering views
+no backend web application or live model-backed frontend
 
 Schema vs operational scope
 
@@ -921,6 +921,132 @@ The future site should consume published snapshot data, not invoke a model direc
 
 
 
+Phase 10 — Static React snapshot site, Ollama ops hardening, and blind evaluation workflow
+
+Goal
+
+
+
+Turn the local pipeline into a usable local product surface without changing the core architecture.
+
+
+
+Phase 10 scope
+
+
+
+Allow a static React site after the snapshot contract is stable.
+
+
+
+The site must:
+
+
+
+read only from `site_data/current/`
+
+remain read-only in the browser
+
+have no backend service
+
+have no server-side rendering requirement
+
+have no live model calls
+
+In local development and static builds, the published snapshot may be served or copied alongside the React assets, but it must remain the same snapshot contract and not become a backend API layer.
+
+
+
+Initial routes:
+
+
+
+`/`
+
+`/dockets/:docketId`
+
+`/dockets/:docketId/cards/:cardId`
+
+
+
+Site responsibilities:
+
+
+
+show docket summaries
+
+show cluster labels and descriptions
+
+show change cards with simple client-side filters
+
+show evaluation available vs not available state
+
+deep-link to individual change cards
+
+
+
+Not in scope for Phase 10 site:
+
+
+
+no in-browser editing of `review_status`
+
+no reviewer login
+
+no persistence layer
+
+no live inference tools
+
+
+
+Ollama operator hardening
+
+
+
+Phase 10 should add:
+
+
+
+shared model profiles for validated local models
+
+an Ollama preflight check used by the labeler and refresh workflow
+
+explicit operator guidance for missing models or stopped daemons
+
+release summaries that record model profile, token totals, and publish metadata
+
+
+
+Blind evaluation workflow
+
+
+
+Phase 10 should also add:
+
+
+
+blinded annotation packet generation from published snapshot data plus source artifacts
+
+editable gold-set templates
+
+gold-set validation before evaluation
+
+evaluation provenance describing whether a gold set is seed-derived or blind human annotation
+
+
+
+This remains a manual human annotation workflow. The repo should support the mechanics, not replace the reviewer.
+
+
+
+Implementation note
+
+
+
+Once the static React site exists, it should be tolerant of published snapshot evolution within the declared `schema_version` boundary. Narrow compatibility shims are acceptable for legacy V1 snapshot payloads, but the main operator path should still refresh and republish the latest snapshot rather than relying on compatibility indefinitely.
+
+
+
 Required rule
 
 
@@ -1129,6 +1255,32 @@ Not a full frontend.
 
 
 
+Milestone 10
+
+
+
+Static React snapshot site + blind evaluation workflow
+
+
+
+Done when:
+
+
+
+the React site reads only from `site_data/current/`
+
+the site supports docket list, docket detail, and card detail routes
+
+the site exposes read-only filters for change cards and clusters
+
+Ollama preflight/model-profile behavior is shared across the local operator flow
+
+release summaries are written into published snapshots
+
+gold-set packets and validation tooling exist for blind annotation work
+
+
+
 Claude Code implementation guardrails
 
 Required instructions
@@ -1155,9 +1307,7 @@ Explicit prohibitions
 
 Tell Claude Code not to generate:
 
-
-
-React frontend in early milestones
+React frontend in early milestones before the snapshot contract is stable
 
 LangChain, LlamaIndex, or orchestration frameworks
 
@@ -1196,6 +1346,14 @@ full document-version graphs beyond proposed/final execution path
 rich review workflow
 
 polished web application
+
+
+
+Clarification
+
+
+
+A static React snapshot viewer is allowed after Milestone 8 artifacts are stable. A polished or backend-driven web application remains deferred.
 
 Recommended V1 slice
 

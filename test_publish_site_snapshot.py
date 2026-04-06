@@ -31,6 +31,17 @@ class PublishSiteSnapshotTests(unittest.TestCase):
                     "total_clusters": 12,
                     "labeled_clusters": 12,
                     "total_change_cards": 146,
+                    "change_type_counts": {"modified": 10},
+                    "alignment_signal_counts": {"high": 1},
+                    "review_status_counts": {"pending": 146},
+                    "labeling": {
+                        "model": "qwen3:14b",
+                        "prompt_version": "v1",
+                        "labeled_at": "2026-04-05T00:00:00+00:00",
+                        "no_think": True,
+                        "total_input_tokens": 321,
+                        "total_output_tokens": 654,
+                    },
                 },
             },
         )
@@ -59,21 +70,29 @@ class PublishSiteSnapshotTests(unittest.TestCase):
         current_index_path = os.path.join(current_dir, "dockets", "index.json")
         current_report_path = os.path.join(current_dir, "dockets", docket_id, "report.json")
         current_eval_path = os.path.join(current_dir, "dockets", docket_id, "eval_report.json")
+        current_release_summary_path = os.path.join(current_dir, "release_summary.json")
 
         self.assertEqual(manifest["schema_version"], "v1")
         self.assertTrue(os.path.exists(release_manifest_path))
         self.assertTrue(os.path.exists(current_index_path))
         self.assertTrue(os.path.exists(current_report_path))
         self.assertTrue(os.path.exists(current_eval_path))
+        self.assertTrue(os.path.exists(current_release_summary_path))
         self.assertFalse(os.path.exists(os.path.join(current_dir, "dockets", docket_id, "report.csv")))
         self.assertFalse(os.path.exists(os.path.join(current_dir, "dockets", docket_id, "report.html")))
 
         with open(current_index_path, "r", encoding="utf-8") as handle:
             docket_index = json.load(handle)
+        with open(current_release_summary_path, "r", encoding="utf-8") as handle:
+            release_summary = json.load(handle)
 
         self.assertEqual(docket_index["schema_version"], "v1")
+        self.assertEqual(docket_index["snapshot"]["release_id"], "20260405T010203Z")
         self.assertEqual(docket_index["dockets"][0]["docket_id"], docket_id)
         self.assertEqual(docket_index["dockets"][0]["report_path"], f"dockets/{docket_id}/report.json")
+        self.assertEqual(docket_index["dockets"][0]["labeling"]["model"], "qwen3:14b")
+        self.assertEqual(release_summary["labeling"]["total_input_tokens"], 321)
+        self.assertEqual(release_summary["evaluation"]["available"], 1)
 
     def test_publish_snapshot_requires_eval_report(self):
         docket_id = "EPA-HQ-OAR-2020-0430"

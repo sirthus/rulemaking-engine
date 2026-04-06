@@ -6,6 +6,7 @@ import os
 import evaluate_pipeline
 import generate_outputs
 import label_clusters
+import ollama_runtime
 import publish_site_snapshot
 
 
@@ -59,11 +60,6 @@ def parse_args():
     )
     return parser.parse_args()
 
-
-def should_use_no_think(model: str) -> bool:
-    return "qwen3" in (model or "").lower()
-
-
 def run_refresh(
     docket_ids: list[str],
     model: str,
@@ -76,7 +72,14 @@ def run_refresh(
     site_data_dir: str,
 ) -> dict:
     client = label_clusters.OllamaClient(ollama_url)
-    no_think = should_use_no_think(model)
+    preflight = ollama_runtime.run_preflight(
+        ollama_url,
+        model,
+        session=getattr(client, "session", None),
+        timeout_seconds=getattr(client, "timeout_seconds", ollama_runtime.DEFAULT_TIMEOUT_SECONDS),
+    )
+    model_profile = preflight["profile"]
+    no_think = bool(model_profile.get("recommended_no_think"))
     label_summaries = []
     output_summaries = []
     eval_reports = []
@@ -88,6 +91,7 @@ def run_refresh(
             model,
             force=force_labels,
             no_think=no_think,
+            model_profile=model_profile,
         )
         if label_summary is None:
             raise RuntimeError(f"Label refresh failed for {docket_id}.")
@@ -106,13 +110,39 @@ def run_refresh(
 
     published_manifest = None
     if not skip_publish:
-        published_manifest = publish_site_snapshot.publish_snapshot(docket_ids, output_dir, site_data_dir)
+        published_manifest = publish_site_snapshot.publish_snapshot(
+            docket_ids,
+            output_dir,
+            site_data_dir,
+            release_metadata={
+                "workflow": "refresh_site_snapshot.py",
+                "refreshed_docket_ids": docket_ids,
+                "model": model,
+                "model_profile": ollama_runtime.profile_for_manifest(model_profile),
+                "no_think": no_think,
+                "label_totals": {
+                    "input_tokens": sum(int(item.get("input_tokens", 0) or 0) for item in label_summaries),
+                    "output_tokens": sum(int(item.get("output_tokens", 0) or 0) for item in label_summaries),
+                    "wall_clock_ms": round(
+                        sum(float(item.get("wall_clock_ms", 0.0) or 0.0) for item in label_summaries),
+                        1,
+                    ),
+                },
+                "evaluation": {
+                    "available": sum(1 for item in eval_reports if item.get("status") == "available"),
+                    "not_available": sum(1 for item in eval_reports if item.get("status") != "available"),
+                    "skipped": bool(skip_evaluate),
+                },
+            },
+        )
 
     return {
         "docket_ids": docket_ids,
         "model": model,
+        "model_profile": ollama_runtime.profile_for_manifest(model_profile),
         "ollama_url": ollama_url,
         "no_think": no_think,
+        "preflight": preflight,
         "label_summaries": label_summaries,
         "output_summaries": output_summaries,
         "eval_reports": eval_reports,
@@ -135,11 +165,22 @@ def main():
         site_data_dir=os.path.abspath(args.site_data_dir),
     )
 
+    for line in ollama_runtime.preflight_summary_lines(result["preflight"]):
+        print(f"[PREFLIGHT]  {line}")
     print("=== Site refresh complete ===")
     print(
         f"Model: {result['model']}  no_think={result['no_think']}  "
         f"dockets={len(result['docket_ids'])}"
     )
+    total_input_tokens = sum(int(item.get("input_tokens", 0) or 0) for item in result["label_summaries"])
+    total_output_tokens = sum(int(item.get("output_tokens", 0) or 0) for item in result["label_summaries"])
+    eval_available = sum(1 for item in result["eval_reports"] if item.get("status") == "available")
+    eval_not_available = sum(1 for item in result["eval_reports"] if item.get("status") != "available")
+    print(f"Label tokens: {total_input_tokens} in / {total_output_tokens} out")
+    if args.skip_evaluate:
+        print("Evaluation: skipped")
+    else:
+        print(f"Evaluation: {eval_available} available / {eval_not_available} not available")
     if result["published_manifest"] is not None:
         print(f"Published release: {result['published_manifest']['release_id']}")
     else:

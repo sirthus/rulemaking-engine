@@ -8,6 +8,8 @@ CHECK_PATHS = [
     "BLUEPRINT.md",
     "CLAUDE.md",
     "label_clusters.py",
+    "refresh_site_snapshot.py",
+    "ollama_runtime.py",
 ]
 BANNED_STRINGS = [
     "ANTHROPIC_API_KEY",

@@ -5,6 +5,8 @@ import json
 import os
 from datetime import datetime, timezone
 
+import gold_set_workflow
+
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
@@ -210,14 +212,20 @@ def render_eval_report_text(report: dict) -> str:
     cluster_metrics = report["cluster_relevance_metrics"]
     p1 = cluster_metrics["precision_at_1"]
     p3 = cluster_metrics["precision_at_3"]
+    provenance = report.get("gold_set_provenance") or {}
 
     return "\n".join(
         [
             f"=== Evaluation Report: {report['docket_id']} ===",
             (
-                f"Gold set: {report['gold_set_annotator']}  "
+                f"Gold set: {provenance.get('annotator') or report.get('gold_set_annotator')}  "
                 f"({alignment_metrics['total_gold_alignments']} alignments, "
                 f"{cluster_metrics['total_gold_judgments']} cluster judgments)"
+            ),
+            (
+                f"Annotation method: {provenance.get('annotation_method', 'unknown')}  "
+                f"Blinded: {bool(provenance.get('blinded'))}  "
+                f"Annotated at: {provenance.get('annotated_at') or 'unknown'}"
             ),
             "",
             f"Alignment metrics ({alignment_metrics['total_gold_alignments']} gold entries):",
@@ -287,9 +295,15 @@ def process_docket(docket_id: str, gold_dir: str, output_dir: str) -> dict | Non
         print_line("ERROR", docket_id, f"missing required input {path}")
         return None
 
+    validation_errors = gold_set_workflow.validate_gold_set_payload(gold, expected_docket_id=docket_id)
+    if validation_errors:
+        print_line("ERROR", docket_id, f"invalid gold set: {validation_errors[0]}")
+        return None
+
     comment_to_cluster = build_comment_to_cluster(themes)
     alignment_metrics = compute_alignment_metrics(gold, alignment_records)
     cluster_relevance_metrics = compute_cluster_relevance_metrics(gold, change_cards, comment_to_cluster)
+    provenance = gold_set_workflow.provenance_for_gold(gold)
 
     report = {
         "schema_version": "v1",
@@ -298,6 +312,7 @@ def process_docket(docket_id: str, gold_dir: str, output_dir: str) -> dict | Non
         "generator": "evaluate_pipeline.py",
         "status": "available",
         "gold_set_annotator": gold.get("annotator"),
+        "gold_set_provenance": provenance,
         "alignment_metrics": alignment_metrics,
         "cluster_relevance_metrics": cluster_relevance_metrics,
     }

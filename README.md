@@ -4,89 +4,83 @@ Traceable rule-evolution analysis plus cautious comment-theme alignment for publ
 
 ## Overview
 
-This repository analyzes how EPA rules change from proposed to final form and how public comment themes may relate to those changed sections. The system is artifact-first and local-first:
+This repository is an artifact-first local product:
 
 - deterministic stages build corpus artifacts under `corpus/`
-- local Ollama batch runs add Phase 7 cluster labels
+- local Ollama batches add Phase 7 labels
 - review artifacts are written under `outputs/`
 - published site-safe JSON snapshots are written under `site_data/`
+- a static React app under `site_app/` reads only from `site_data/current/`
 
-The product does not do live inference at request time, and it does not claim that comments "caused" a rule change.
+There is no live model API in the product path, and the site never invokes a model directly.
 
 ## Current Status
 
-The repository has completed the current V1 pipeline through Phase 9.1 for the locked three-docket EPA starter set:
+The repo is implemented through Phase 10 for the locked three-docket EPA starter set:
 
 - `EPA-HQ-OAR-2020-0272`
 - `EPA-HQ-OAR-2018-0225`
 - `EPA-HQ-OAR-2020-0430`
 
-`BLUEPRINT.md` remains the long-range roadmap and product vision document. It is not a line-by-line description of the current implementation state.
+Phase 10 adds:
 
-## Implemented Workflow
+- a static React snapshot viewer
+- shared Ollama model profiles and preflight checks
+- a richer published snapshot contract with `release_summary.json`
+- blind gold-set packet generation and validation tooling
+- Vite dev/build support for serving and packaging the published snapshot
 
-The current public repo contains these executable pipeline stages:
+## Prerequisites
 
-- [`fetch_corpus.py`](fetch_corpus.py): fetch Federal Register rule text and Regulations.gov comment data into the local corpus
-- [`align_corpus.py`](align_corpus.py): normalize and align proposed/final rule sections, producing per-docket alignment artifacts
-- [`dedup_comments.py`](dedup_comments.py): collapse exact and near-duplicate public comments into canonical families
-- [`generate_change_cards.py`](generate_change_cards.py): generate change-card records with cautious relationship signals
-- [`cluster_comments.py`](cluster_comments.py): build deterministic theme clusters from the comment corpus and existing per-docket artifacts
-- [`label_clusters.py`](label_clusters.py): label existing theme clusters with a local Ollama model
-- [`generate_outputs.py`](generate_outputs.py): consolidate per-docket artifacts into JSON, CSV, and static HTML review outputs under `outputs/`
-- [`evaluate_pipeline.py`](evaluate_pipeline.py): evaluate pipeline outputs against committed per-docket gold sets and write evaluation reports
-- [`publish_site_snapshot.py`](publish_site_snapshot.py): publish site-safe JSON snapshots under `site_data/releases/` and `site_data/current/`
-- [`refresh_site_snapshot.py`](refresh_site_snapshot.py): run the post-clustering local refresh path in one command
+Python/runtime:
 
-Phase 7 now writes `label_run.json` with real local run provenance, including model, prompt version, token counts, durations, and per-cluster outcomes.
+- `python` or `python3`
+- `pip`
+- `requests`
 
-Phase 8 writes review-friendly exports under `outputs/{docket_id}/`:
+Frontend/runtime:
 
-- `report.json`
-- `report.csv`
-- `report.html`
+- `node`
+- `npm`
 
-Phase 9 writes evaluation artifacts under `outputs/{docket_id}/`:
+Local LLM/runtime:
 
-- `eval_report.json`
-- `eval_report.txt`
+- `ollama`
+- at least one pulled local model
 
-Published site snapshots live under `site_data/`:
+API access:
 
-- `site_data/current/manifest.json`
-- `site_data/current/dockets/index.json`
-- `site_data/current/dockets/{docket_id}/report.json`
-- `site_data/current/dockets/{docket_id}/eval_report.json`
+- `REGULATIONS_GOV_API_KEY` for `fetch_corpus.py`
 
-## Quick Start
-
-Install the pipeline dependency:
+Install the Python dependency:
 
 ```bash
 pip install requests
 ```
 
-Set a Regulations.gov API key:
+Set your Regulations.gov API key before fetching comments:
 
 ```bash
 export REGULATIONS_GOV_API_KEY=your_key_here
 ```
 
-Run the deterministic pipeline stages:
+Federal Register does not require an API key. Regulations.gov does.
+
+## Deterministic Pipeline
+
+Run the deterministic stages:
 
 ```bash
-python3 fetch_corpus.py
-python3 align_corpus.py
-python3 dedup_comments.py
-python3 generate_change_cards.py
-python3 cluster_comments.py
+python fetch_corpus.py
+python align_corpus.py
+python dedup_comments.py
+python generate_change_cards.py
+python cluster_comments.py
 ```
 
-Federal Register access does not require an API key. Regulations.gov does.
+## Local Ollama Workflow
 
-## Local Ollama Labeling
-
-Phase 7 is local-only. Start Ollama and pull one of the validated models:
+Phase 7 is local-only. Start Ollama and pull one of the supported profiles:
 
 ```bash
 ollama serve
@@ -94,82 +88,164 @@ ollama pull qwen3:14b
 ollama pull gemma3:12b-it-q8_0
 ```
 
-Recommended model defaults:
+Validated local profiles:
 
-- Accuracy-first default: `qwen3:14b`
-- Faster alternative: `gemma3:12b-it-q8_0`
+- accuracy-first default: `qwen3:14b`
+- speed-first alternative: `gemma3:12b-it-q8_0`
 
-Run local labeling:
-
-```bash
-python3 label_clusters.py --model qwen3:14b --no-think
-```
-
-Or label one docket:
+Run labeling directly:
 
 ```bash
-python3 label_clusters.py --docket EPA-HQ-OAR-2020-0430 --model gemma3:12b-it-q8_0
+python label_clusters.py --model qwen3:14b --no-think
 ```
 
-`qwen3:14b` is the default operator model for this repo. `--no-think` is recommended for Qwen and is automatically applied by `refresh_site_snapshot.py` when the selected model name contains `qwen3`.
+Or refresh the whole post-clustering path:
+
+```bash
+python refresh_site_snapshot.py --model qwen3:14b
+```
+
+That refresh command is the normal Phase 10 operator entrypoint. It now:
+
+1. runs Ollama preflight and validates the requested model
+2. resolves the supported model profile and `no_think` behavior
+3. labels clusters locally
+4. regenerates `report.json`, `report.csv`, and `report.html`
+5. regenerates `eval_report.json`
+6. publishes a new immutable snapshot release plus `site_data/current/`
+
+For `qwen3:14b`, `refresh_site_snapshot.py` applies the recommended `no_think` behavior automatically through the shared model profile. You do not need to pass an extra flag there.
 
 ## Outputs vs Published Site Data
 
-The repo now distinguishes between working outputs and published site inputs:
+The repo now has three distinct artifact layers:
 
-- `outputs/` is for operator review and local QA
-- `site_data/` is for clean published JSON snapshots only
+- `corpus/`: source-of-truth working artifacts from the local pipeline
+- `outputs/`: operator review artifacts
+- `site_data/`: published JSON snapshots for the site
 
-Use the review/export path when you want operator artifacts:
+Published snapshot contract:
+
+- `site_data/current/manifest.json`
+- `site_data/current/release_summary.json`
+- `site_data/current/dockets/index.json`
+- `site_data/current/dockets/{docket_id}/report.json`
+- `site_data/current/dockets/{docket_id}/eval_report.json`
+
+`report.csv`, `report.html`, raw corpus files, and operator-only manifests are intentionally excluded from the site contract.
+
+## Static React Site
+
+The first site lives under `site_app/`. It is a client-only React app with:
+
+- no backend
+- no SSR requirement
+- no model calls
+- no browser editing workflow
+
+The site expects a published snapshot to exist first:
 
 ```bash
-python3 generate_outputs.py
-python3 evaluate_pipeline.py
+python refresh_site_snapshot.py --model qwen3:14b
 ```
 
-Publish a site-safe snapshot from existing artifacts:
+Then use the frontend workspace:
 
 ```bash
-python3 publish_site_snapshot.py
+cd site_app
+npm install
+npm test
+npm run build
+npm run dev
 ```
 
-Or run the full local refresh flow after clustering:
+Useful routes:
+
+- `/`
+- `/dockets/:docketId`
+- `/dockets/:docketId/cards/:cardId`
+
+Local serving behavior:
+
+- in `npm run dev`, Vite serves `site_data/current/` directly at `/site_data/current/...`
+- in `npm run build`, the snapshot is copied into `dist/site_data/current/`
+- `npm run preview` serves the built snapshot-aware site
+
+The frontend loader now tolerates both:
+
+- the newer Phase 10 snapshot shape
+- the earlier published snapshot shape from before the richer docket index fields existed
+
+That compatibility is only a safety net. The recommended path is still to regenerate the snapshot with `refresh_site_snapshot.py` so the site gets the latest Phase 10 metadata.
+
+## Blind Evaluation Workflow
+
+Phase 10 makes blind gold-set mechanics a first-class repo workflow.
+
+Generate a blinded packet and editable template from the current published snapshot:
 
 ```bash
-python3 refresh_site_snapshot.py --model qwen3:14b
+python prepare_gold_set_packet.py --docket EPA-HQ-OAR-2020-0430
 ```
 
-That refresh flow:
+That writes:
 
-1. labels clusters locally with Ollama
-2. regenerates `report.json` / `report.csv` / `report.html`
-3. regenerates `eval_report.json` when evaluation is enabled
-4. publishes a clean JSON snapshot under `site_data/`
+- `gold_set/packets/{docket_id}.packet.json`
+- `gold_set/templates/{docket_id}.template.json`
 
-If a docket has no committed gold set yet, Phase 9 writes an `eval_report.json` stub with `status: "not_available"` so the published snapshot stays schema-complete without overstating evaluation coverage.
+After a reviewer completes a gold set, validate it before evaluation:
+
+```bash
+python validate_gold_set.py --docket EPA-HQ-OAR-2020-0430 --path gold_set/EPA-HQ-OAR-2020-0430.json
+```
+
+Then regenerate evaluation:
+
+```bash
+python evaluate_pipeline.py --docket EPA-HQ-OAR-2020-0430
+```
+
+If a docket has no committed gold set yet, Phase 9 still writes an `eval_report.json` stub with `status: "not_available"`.
+
+## Verified Commands
+
+Backend verification:
+
+```bash
+python -m unittest test_phase5.py test_phase8.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py -v
+```
+
+Frontend verification:
+
+```bash
+cd site_app
+npm test
+npm run build
+```
 
 ## Scope And Guardrails
 
-The current V1 operating scope is intentionally narrow:
+The operating scope is intentionally narrow:
 
 - one agency: EPA
-- three dockets
+- three locked dockets
 - one proposed rule and one final rule per docket
 - comments from the main text body only
+- read-only browser review surface
 
 Current non-goals:
 
 - no attachment parsing
 - no OCR pipeline
 - no eCFR integration
-- no live chat product
-- no live model API in the product path
+- no live inference backend
+- no browser editing workflow
 - no causal claim that comments determined a rule change
 
-## Local-Only Workflow Docs
+## Local-Only Working Docs
 
-Planner handoff and implementation-tracking files are intentionally kept local and out of GitHub. That includes phase specs, status handoff notes, and similar working documents used during agent collaboration.
+Planner handoff notes, phase specs, and local implementation trackers are intentionally kept out of GitHub. That includes `PROJECT_STATUS.md` and `PHASE*_SPEC.md`.
 
 ## Roadmap
 
-Later phases may add richer theme-to-change integration beyond the current cautious labeling helper. For the broader roadmap, scope discipline, and future-phase intent, see [`BLUEPRINT.md`](BLUEPRINT.md).
+See `BLUEPRINT.md` for the broader roadmap, future-phase constraints, and the Phase 10 architecture decision that keeps the product local, static, and artifact-driven.
