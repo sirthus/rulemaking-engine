@@ -70,7 +70,13 @@ def validate_source_report(payload: dict, docket_id: str, artifact_name: str) ->
         raise RuntimeError(f"{artifact_name} for {docket_id} has the wrong docket_id.")
 
 
-def build_index_entry(report: dict, eval_report: dict, docket_id: str, published_at: str) -> dict:
+def build_index_entry(
+    report: dict,
+    eval_report: dict,
+    insight_report: dict | None,
+    docket_id: str,
+    published_at: str,
+) -> dict:
     summary = report.get("summary") or {}
     labeling = summary.get("labeling") if isinstance(summary.get("labeling"), dict) else {}
     evaluation_status = eval_report.get("status") or "available"
@@ -79,6 +85,9 @@ def build_index_entry(report: dict, eval_report: dict, docket_id: str, published
         "display_title": report.get("docket_title") or report.get("title") or docket_id,
         "report_path": f"dockets/{docket_id}/report.json",
         "eval_report_path": f"dockets/{docket_id}/eval_report.json",
+        "insight_report_path": f"dockets/{docket_id}/insight_report.json" if insight_report else None,
+        "insight_available": insight_report is not None,
+        "insight_generated_at": insight_report.get("generated_at") if insight_report else None,
         "latest_publish_at": published_at,
         "generated_at": report.get("generated_at"),
         "evaluated_at": eval_report.get("evaluated_at"),
@@ -138,6 +147,10 @@ def build_release_summary(
             "available": available_evaluations,
             "not_available": not_available_evaluations,
         },
+        "insights": {
+            "available": sum(1 for entry in index_entries if entry.get("insight_available")),
+            "not_available": sum(1 for entry in index_entries if not entry.get("insight_available")),
+        },
         "labeling": {
             "models": models,
             "total_input_tokens": total_input_tokens,
@@ -193,7 +206,16 @@ def publish_snapshot(
         release_docket_dir = os.path.join(release_dir, "dockets", docket_id)
         atomic_write_json(os.path.join(release_docket_dir, "report.json"), report)
         atomic_write_json(os.path.join(release_docket_dir, "eval_report.json"), eval_report)
-        index_entries.append(build_index_entry(report, eval_report, docket_id, published_at))
+
+        insight_report_path = os.path.join(output_dir, docket_id, "insight_report.json")
+        insight_report = None
+        if os.path.exists(insight_report_path):
+            insight_report = read_json(insight_report_path)
+            validate_source_report(insight_report, docket_id, "insight_report.json")
+            atomic_write_json(os.path.join(release_docket_dir, "insight_report.json"), insight_report)
+            print("  [insight_report.json] copied")
+
+        index_entries.append(build_index_entry(report, eval_report, insight_report, docket_id, published_at))
 
     release_summary = build_release_summary(
         resolved_release_id,

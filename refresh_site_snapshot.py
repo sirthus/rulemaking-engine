@@ -4,6 +4,7 @@ import argparse
 import os
 
 import evaluate_pipeline
+import generate_insights
 import generate_outputs
 import label_clusters
 import ollama_runtime
@@ -38,6 +39,7 @@ def parse_args():
         action="store_true",
         help="Skip evaluation refresh and reuse any existing eval_report.json files.",
     )
+    parser.add_argument("--skip-insights", action="store_true", help="Skip insight generation")
     parser.add_argument(
         "--skip-publish",
         action="store_true",
@@ -66,6 +68,7 @@ def run_refresh(
     ollama_url: str,
     force_labels: bool,
     skip_evaluate: bool,
+    skip_insights: bool,
     skip_publish: bool,
     output_dir: str,
     gold_dir: str,
@@ -83,6 +86,7 @@ def run_refresh(
     label_summaries = []
     output_summaries = []
     eval_reports = []
+    insight_summaries = {}
 
     for docket_id in docket_ids:
         label_summary = label_clusters.process_docket(
@@ -107,6 +111,18 @@ def run_refresh(
             if eval_report is None:
                 raise RuntimeError(f"Evaluation refresh failed for {docket_id}.")
             eval_reports.append(eval_report)
+
+    if not skip_insights:
+        for docket_id in docket_ids:
+            try:
+                insight_report = generate_insights.process_docket(docket_id, output_dir)
+                insight_summaries[docket_id] = {
+                    "finding_count": len(insight_report.get("top_findings", [])),
+                    "priority_card_count": len(insight_report.get("priority_cards", [])),
+                }
+            except Exception as exc:
+                print(f"[{docket_id}] WARN: insight generation failed: {exc}")
+                insight_summaries[docket_id] = None
 
     published_manifest = None
     if not skip_publish:
@@ -133,6 +149,10 @@ def run_refresh(
                     "not_available": sum(1 for item in eval_reports if item.get("status") != "available"),
                     "skipped": bool(skip_evaluate),
                 },
+                "insights": {
+                    "available": sum(1 for item in insight_summaries.values() if item is not None),
+                    "not_available": sum(1 for item in insight_summaries.values() if item is None),
+                },
             },
         )
 
@@ -146,6 +166,7 @@ def run_refresh(
         "label_summaries": label_summaries,
         "output_summaries": output_summaries,
         "eval_reports": eval_reports,
+        "insight_summaries": insight_summaries,
         "published_manifest": published_manifest,
     }
 
@@ -159,6 +180,7 @@ def main():
         ollama_url=args.ollama_url,
         force_labels=args.force_labels,
         skip_evaluate=args.skip_evaluate,
+        skip_insights=args.skip_insights,
         skip_publish=args.skip_publish,
         output_dir=os.path.abspath(args.output_dir),
         gold_dir=os.path.abspath(args.gold_dir),

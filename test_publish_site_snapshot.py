@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime
 
 import publish_site_snapshot
 
@@ -90,9 +91,66 @@ class PublishSiteSnapshotTests(unittest.TestCase):
         self.assertEqual(docket_index["snapshot"]["release_id"], "20260405T010203Z")
         self.assertEqual(docket_index["dockets"][0]["docket_id"], docket_id)
         self.assertEqual(docket_index["dockets"][0]["report_path"], f"dockets/{docket_id}/report.json")
+        self.assertIsNone(docket_index["dockets"][0]["insight_report_path"])
+        self.assertFalse(docket_index["dockets"][0]["insight_available"])
+        self.assertIsNone(docket_index["dockets"][0]["insight_generated_at"])
         self.assertEqual(docket_index["dockets"][0]["labeling"]["model"], "qwen3:14b")
         self.assertEqual(release_summary["labeling"]["total_input_tokens"], 321)
         self.assertEqual(release_summary["evaluation"]["available"], 1)
+        self.assertEqual(release_summary["insights"]["not_available"], 1)
+
+        insight_generated_at = "2026-04-05T02:00:00+00:00"
+        self.write_json(
+            os.path.join(docket_output_dir, "insight_report.json"),
+            {
+                "schema_version": "v1",
+                "docket_id": docket_id,
+                "generated_at": insight_generated_at,
+                "generator": "generate_insights.py",
+                "executive_summary": "Summary.",
+                "top_findings": [],
+                "rule_story": {
+                    "what_changed": "",
+                    "what_commenters_emphasized": "",
+                    "where_final_text_aligned": "",
+                    "caveats": "",
+                },
+                "priority_cards": [],
+                "provenance": {
+                    "source_report": f"outputs/{docket_id}/report.json",
+                    "source_eval_report": f"outputs/{docket_id}/eval_report.json",
+                    "eval_available": True,
+                    "report_schema_version": "v1",
+                    "card_count": 0,
+                    "cluster_count": 0,
+                    "finding_count": 0,
+                },
+            },
+        )
+
+        publish_site_snapshot.publish_snapshot(
+            [docket_id],
+            self.output_dir,
+            self.site_data_dir,
+            release_id="20260405T010204Z",
+        )
+
+        current_insight_path = os.path.join(current_dir, "dockets", docket_id, "insight_report.json")
+        self.assertTrue(os.path.exists(current_insight_path))
+
+        with open(current_index_path, "r", encoding="utf-8") as handle:
+            docket_index = json.load(handle)
+        with open(current_release_summary_path, "r", encoding="utf-8") as handle:
+            release_summary = json.load(handle)
+
+        self.assertTrue(docket_index["dockets"][0]["insight_available"])
+        self.assertEqual(
+            docket_index["dockets"][0]["insight_report_path"],
+            f"dockets/{docket_id}/insight_report.json",
+        )
+        datetime.fromisoformat(docket_index["dockets"][0]["insight_generated_at"])
+        self.assertEqual(docket_index["dockets"][0]["insight_generated_at"], insight_generated_at)
+        self.assertEqual(release_summary["insights"]["available"], 1)
 
     def test_publish_snapshot_requires_eval_report(self):
         docket_id = "EPA-HQ-OAR-2020-0430"

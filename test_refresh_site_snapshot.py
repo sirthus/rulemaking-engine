@@ -13,6 +13,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         self.original_label_process = refresh_site_snapshot.label_clusters.process_docket
         self.original_output_process = refresh_site_snapshot.generate_outputs.process_docket
         self.original_eval_process = refresh_site_snapshot.evaluate_pipeline.process_docket
+        self.original_insight_process = refresh_site_snapshot.generate_insights.process_docket
         self.original_publish = refresh_site_snapshot.publish_site_snapshot.publish_snapshot
         self.original_preflight = refresh_site_snapshot.ollama_runtime.run_preflight
         self.addCleanup(self.restore_globals)
@@ -22,6 +23,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         refresh_site_snapshot.label_clusters.process_docket = self.original_label_process
         refresh_site_snapshot.generate_outputs.process_docket = self.original_output_process
         refresh_site_snapshot.evaluate_pipeline.process_docket = self.original_eval_process
+        refresh_site_snapshot.generate_insights.process_docket = self.original_insight_process
         refresh_site_snapshot.publish_site_snapshot.publish_snapshot = self.original_publish
         refresh_site_snapshot.ollama_runtime.run_preflight = self.original_preflight
 
@@ -58,6 +60,10 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
             calls.append(("eval", docket_id, gold_dir, output_dir))
             or {"docket_id": docket_id, "status": "available"}
         )
+        refresh_site_snapshot.generate_insights.process_docket = lambda docket_id, output_dir: (
+            calls.append(("insights", docket_id, output_dir))
+            or {"top_findings": [{"finding_id": "finding-001"}], "priority_cards": [{"card_id": "card-001"}]}
+        )
         refresh_site_snapshot.publish_site_snapshot.publish_snapshot = (
             lambda docket_ids, output_dir, site_data_dir, release_metadata=None: (
                 calls.append(("publish", tuple(docket_ids), output_dir, site_data_dir, release_metadata))
@@ -71,6 +77,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
             ollama_url="http://localhost:11434",
             force_labels=True,
             skip_evaluate=False,
+            skip_insights=False,
             skip_publish=False,
             output_dir="OUT",
             gold_dir="GOLD",
@@ -81,9 +88,12 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         self.assertEqual(calls[0], ("label", "EPA-HQ-OAR-2020-0430", "qwen3:14b", True, True, "http://localhost:11434"))
         self.assertEqual(calls[1], ("output", "EPA-HQ-OAR-2020-0430", "OUT", True))
         self.assertEqual(calls[2], ("eval", "EPA-HQ-OAR-2020-0430", "GOLD", "OUT"))
-        self.assertEqual(calls[3][0:4], ("publish", ("EPA-HQ-OAR-2020-0430",), "OUT", "SITE"))
-        self.assertEqual(calls[3][4]["model"], "qwen3:14b")
-        self.assertTrue(calls[3][4]["no_think"])
+        self.assertEqual(calls[3], ("insights", "EPA-HQ-OAR-2020-0430", "OUT"))
+        self.assertEqual(calls[4][0:4], ("publish", ("EPA-HQ-OAR-2020-0430",), "OUT", "SITE"))
+        self.assertEqual(calls[4][4]["model"], "qwen3:14b")
+        self.assertTrue(calls[4][4]["no_think"])
+        self.assertEqual(calls[4][4]["insights"], {"available": 1, "not_available": 0})
+        self.assertEqual(result["insight_summaries"]["EPA-HQ-OAR-2020-0430"], {"finding_count": 1, "priority_card_count": 1})
 
     def test_run_refresh_skips_eval_and_publish_when_requested(self):
         calls = []
@@ -114,10 +124,13 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
             calls.append(("output", docket_id)) or {"docket_id": docket_id}
         )
         refresh_site_snapshot.evaluate_pipeline.process_docket = lambda docket_id, gold_dir, output_dir: (
-            calls.append(("eval", docket_id)) or {"docket_id": docket_id}
+            calls.append(("eval", docket_id)) or {"docket_id": docket_id, "status": "available"}
+        )
+        refresh_site_snapshot.generate_insights.process_docket = lambda docket_id, output_dir: (
+            calls.append(("insights", docket_id)) or {"top_findings": [], "priority_cards": []}
         )
         refresh_site_snapshot.publish_site_snapshot.publish_snapshot = lambda docket_ids, output_dir, site_data_dir, release_metadata=None: (
-            calls.append(("publish", tuple(docket_ids))) or {"release_id": "unused"}
+            calls.append(("publish", tuple(docket_ids), release_metadata)) or {"release_id": "unused"}
         )
 
         result = refresh_site_snapshot.run_refresh(
@@ -126,6 +139,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
             ollama_url="http://localhost:11434",
             force_labels=False,
             skip_evaluate=True,
+            skip_insights=False,
             skip_publish=True,
             output_dir="OUT",
             gold_dir="GOLD",
@@ -133,7 +147,36 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         )
 
         self.assertFalse(result["no_think"])
-        self.assertEqual(calls, [("label", "EPA-HQ-OAR-2020-0430", False), ("output", "EPA-HQ-OAR-2020-0430")])
+        self.assertEqual(
+            calls,
+            [
+                ("label", "EPA-HQ-OAR-2020-0430", False),
+                ("output", "EPA-HQ-OAR-2020-0430"),
+                ("insights", "EPA-HQ-OAR-2020-0430"),
+            ],
+        )
+
+        calls.clear()
+        result = refresh_site_snapshot.run_refresh(
+            docket_ids=["EPA-HQ-OAR-2020-0430"],
+            model="gemma3:12b-it-q8_0",
+            ollama_url="http://localhost:11434",
+            force_labels=False,
+            skip_evaluate=False,
+            skip_insights=True,
+            skip_publish=False,
+            output_dir="OUT",
+            gold_dir="GOLD",
+            site_data_dir="SITE",
+        )
+
+        self.assertEqual(
+            [call[0] for call in calls],
+            ["label", "output", "eval", "publish"],
+        )
+        self.assertEqual(calls[3][1], ("EPA-HQ-OAR-2020-0430",))
+        self.assertEqual(calls[3][2]["insights"], {"available": 0, "not_available": 0})
+        self.assertEqual(result["insight_summaries"], {})
 
 
 if __name__ == "__main__":
