@@ -40,7 +40,7 @@ def resolve_model_profile(model: str | None) -> dict:
         "recommended_no_think": False,
         "status": "experimental",
         "warning": (
-            "This model is not in the validated Phase 10 profile list. "
+            "This model is not in the validated local profile list. "
             "Proceed only if you have validated it locally."
         ),
         "supported": False,

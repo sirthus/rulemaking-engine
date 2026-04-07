@@ -896,7 +896,7 @@ def main():
         if summary is not None:
             summaries.append(summary)
 
-    print("=== Phase 8 outputs complete ===")
+    print("=== Output generation complete ===")
     for summary in summaries:
         print(
             f"{summary['docket_id']}   {summary['cluster_count']} clusters  {summary['change_card_count']} cards"

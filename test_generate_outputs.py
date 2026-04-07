@@ -7,7 +7,7 @@ import unittest
 import generate_outputs
 
 
-class Phase8Tests(unittest.TestCase):
+class GenerateOutputsTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)

@@ -1,0 +1,223 @@
+{
+  "docket_id": "EPA-HQ-OAR-2020-0430",
+  "annotator": "claude-opus-4-6",
+  "annotated_at": "2026-04-06T12:00:00+00:00",
+  "annotation_method": "llm_blind",
+  "blinded": true,
+  "notes": "LLM-blind annotation. Judgments made from source section texts and cluster descriptions only. Pipeline predictions were not consulted.",
+  "alignments": [
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0001",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0001",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "AGENCY: heading identical in both. Body text identical: 'Environmental Protection Agency (EPA).'"
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0002",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0002",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ACTION: heading identical. Body changed from 'Proposed rule.' to 'Final rule.' -- standard boilerplate change reflecting document stage."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0003",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0003",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "SUMMARY: heading identical. Text substantially rewritten: proposed version describes proposing new standards; final version describes finalizing standards with significantly more detail on specific pollutants (mercury, benzene, toluene, HCl, chlorine, PAH, D/F) and new emission sources (anode refining, roofline vents, Hoboken converter)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0004",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0004",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "DATES: heading identical. Content entirely different: proposed lists comment deadlines and public hearing info; final lists effective dates (May 13, 2024 and July 15, 2024)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0005",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0005",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ADDRESSES: heading identical. Proposed gives detailed comment submission methods (email, fax, mail, hand delivery); final is a shorter docket reference with reading room info. Both reference same docket ID."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0006",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0006",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "FOR FURTHER INFORMATION CONTACT: heading identical. Contact person changed from Tonisha Dawson to Amanda Hansen; James Hirtz remains. Address format and phone numbers differ."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0007",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0007",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "SUPPLEMENTARY INFORMATION: heading identical. Proposed contains lengthy executive summary, hearing info, docket instructions, CBI guidance, and preamble organization. Final is condensed to acronyms list, background references to 2022 and 2023 proposals, and document organization."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0008",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0009",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'A. Does this action apply to me?' matched to final 'B. Does this action apply to me?' -- section letter changed from A to B but question is identical. Body text nearly identical with minor wording changes (proposed->final action, proposed standards->final standards, Tribal capitalization)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0009",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0010",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'B. Where can I get a copy...' matched to final 'C. Where can I get a copy...' -- section letter changed B to C. Body text very similar with minor wording updates (proposed action->final action, shorter in final)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0010",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0012",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Both headed 'A. What is the statutory authority for this action?' Body text covers the same CAA section 112 framework but is substantially rewritten and condensed in the final rule."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0011",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0013",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'B. What is this source category and how does the current NESHAP regulate its HAP emissions?' vs final 'B. What is the Primary Copper Smelting source category and how does the NESHAP regulate HAP emissions from the source category?' Same topic, heading reworded. Body text largely similar with minor editorial changes."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0012",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0035",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'C. What data collection activities were conducted...' matched to final 'What key comments did we receive on the technology review...' -- different headings but both address the data/technology review dimension. Content entirely different: proposed describes NEI data collection; final discusses comments on WESP technology for aisle scrubber emissions."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0013",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0036",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'D. What other relevant background information and data are available?' matched to final 'What is the rationale for our final approach for the technology review?' Headings differ substantially. Proposed discusses ECHO database and compliance history; final discusses risk modeling revisions and baghouse technology determinations."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0014",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0024",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'III. Analytical Procedures and Decision-Making' matched to final 'What did we propose pursuant to CAA section 112(f)...' Both address risk review methodology but from different angles (proposed: general analytical framework; final: specific proposal recap for 112(f) decisions)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0015",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0028",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'A. How do we consider risk in our decision-making?' matched to final 'What is the rationale for our final approach and final decisions for the risk review?' Both address the two-step risk assessment approach under CAA 112(f)(2). Headings differ but topic is the same risk decision framework."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0016",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0051",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'B. How do we perform the technology review?' matched to final 'What key comments did we receive on the unregulated HAP revisions...' Headings very different. Proposed describes general technology review methodology; final addresses specific comments on MACT standards for unregulated pollutants. Both relate to technology review but content shifted from methodology to comment response."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0017",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0027",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'C. How do we estimate post-MACT risk...' matched to final 'What key comments did we receive on the risk review...' Both address risk assessment for the source category. Proposed describes general risk assessment process; final summarizes comments received and EPA responses on risk assessment."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0018",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0043",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'How did we estimate actual emissions...' matched to final 'What key comments did we receive on...process fugitive emissions from roofline vents...' Headings differ significantly. Proposed describes emissions estimation methodology; final addresses comments on roofline PM test methods. Both relate to emissions measurement but from very different angles."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0019",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0008",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'How did we estimate MACT-allowable emissions?' matched to final 'A. Executive Summary'. Headings are entirely different topics. Proposed discusses MACT-allowable emissions methodology; final is the executive summary of the entire final rule. This appears to be a weak/questionable alignment -- the sections do not correspond topically."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0020",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0074",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'How do we conduct dispersion modeling...' matched to final 'What analysis of environmental justice did we conduct?' Headings are entirely different. Proposed covers HEM-4 dispersion modeling methodology; final discusses EJ analysis guidance. Both involve analytical methods but on different subjects. Weak alignment."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0021",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "Proposed 'a. Dispersion Modeling' has no final counterpart. Detailed AERMOD methodology was not carried forward as a standalone section in the final rule; content likely consolidated into other sections."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0022",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "Proposed 'b. Risk From Chronic Exposure to HAP' has no final counterpart. Detailed chronic risk methodology section not carried forward as standalone section in final rule."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0023",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "Proposed 'c. Risk From Acute Exposure to HAP...' has no final counterpart. Detailed acute risk methodology section not carried forward as standalone section in final rule."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0024",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "Proposed 'How do we conduct the multipathway exposure and risk screening assessment?' has no final counterpart. Detailed multipathway screening methodology not carried forward as standalone section."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2020-0430_proposed_0025",
+      "final_section_id": "EPA-HQ-OAR-2020-0430_final_0033",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'How do we assess risks considering emissions control options?' matched to final 'What did we propose pursuant to CAA section 112(d)(6)...' Both relate to emissions control and risk reduction but headings differ. Proposed is a general methodology description; final discusses specific technology review proposals including WESP for Freeport aisle scrubber."
+    }
+  ],
+  "cluster_relevance": [
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0004",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Card covers ADDRESSES section (docket/submission logistics). Cluster 0003 advocates for stricter emission standards and environmental justice. No topical connection to submission address information."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0007",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0003",
+      "relevance": "partially_relevant",
+      "notes": "Card covers 'Does this action apply to me?' which identifies affected source categories (primary copper smelting major/area sources under subpart QQQ and EEEEEE). Cluster 0003 advocates for stricter standards for primary copper smelters -- indirectly related since the cluster commenters are concerned about the same regulated entities described here."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0010",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0003",
+      "relevance": "partially_relevant",
+      "notes": "Card covers the source category description and current NESHAP regulation of HAP emissions from primary copper smelters. Cluster 0003 advocates for stricter standards for these same smelters. The cluster is concerned with the regulatory outcomes for this source category, making it indirectly connected to the descriptive background section."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0004",
+      "relevance": "partially_relevant",
+      "notes": "Card covers proposed technology review methodology (BTF analysis) matched to final comments on unregulated HAP MACT standards. Cluster 0004 argues emission levels are unacceptable near water sources and populations. The cluster's concern about unacceptable emission levels relates indirectly to the technology review's consideration of additional controls, but the cluster focuses on proximity to water sources which is not the primary topic here."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0007",
+      "relevance": "partially_relevant",
+      "notes": "Card addresses technology review and comments on unregulated HAP (benzene, PAH, naphthalene, D/F) and BTF cost analysis. Cluster 0007 discusses inability of PM monitoring to detect gaseous contaminants. There is a partial connection since the card addresses regulation of non-PM pollutants (gaseous HAP) which aligns with the cluster's concern about limitations of PM-only monitoring."
+    },
+    {
+      "card_id": "EPA-HQ-OAR-2020-0430_card_0024",
+      "cluster_id": "EPA-HQ-OAR-2020-0430_cluster_0003",
+      "relevance": "relevant",
+      "notes": "Card covers risk assessment considering emissions control options, matched to final section on technology review proposals including WESP controls for Freeport aisle scrubber. Cluster 0003 advocates for stricter emission standards to reduce health risks. This is directly relevant -- the cluster's call for stricter standards connects squarely to the card's discussion of additional emission control options and their risk reduction potential."
+    }
+  ]
+}

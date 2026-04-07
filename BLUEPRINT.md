@@ -1,5 +1,11 @@
-Rulemaking Evolution and Comment Impact Engine
-----------------------------------------------
+Rulemaking Engine V1 Blueprint
+------------------------------
+
+Status note
+
+This is the V1 blueprint. V1 built the local, artifact-first substrate: corpus artifacts, change cards, comment clusters, evaluation plumbing, published snapshots, and a read-only React snapshot site.
+
+V2 planning now lives in `V2_BLUEPRINT.md`. V2 accepts AI-blind gold sets as the evaluation baseline and focuses on turning this substrate into an insight-first analyst system.
 
 Product goal
 
@@ -51,19 +57,19 @@ there is no live model API, backend web application, SSR requirement, or browser
 
 
 
-The tracked cross-machine handoff docs are:
+The active cross-machine handoff docs are:
 
 
 
 `PROJECT_STATUS.md`
 
-`PHASE8_SPEC.md`
+`BLUEPRINT.md`
 
-`PHASE9_SPEC.md`
+`V2_BLUEPRINT.md`
 
-`PHASE9.1_SPEC.md`
+`README.md`
 
-`PHASE10_SPEC.md`
+`CLAUDE.md`
 
 
 
@@ -71,19 +77,19 @@ Immediate next blueprint work
 
 
 
-The next work is evaluation maturity, not new product architecture.
+The V1 blueprint is complete through Phase 10. The next blueprint work is V2 insight-product work in `V2_BLUEPRINT.md`, not further V1 architecture.
 
 
 
-Complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`.
+AI-blind gold sets are accepted as sufficient for the V2 evaluation baseline.
 
-Replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation before using metrics externally.
+Human-blind annotation remains a possible future quality upgrade, but it is not a blocker for V2.
 
 Rerun evaluation and `refresh_site_snapshot.py --model qwen3:14b` after gold-set updates.
 
 Verify the React site against the refreshed multi-docket snapshot.
 
-Only after evaluation quality is stronger, consider richer relationship-ranking, reviewer workflow, or explanation stages.
+The next substantive product work is richer relationship ranking, evidence-grounded explanation, and a site experience that surfaces the rulemaking story.
 
 
 
@@ -91,11 +97,11 @@ Expected current evaluation state
 
 
 
-Only `EPA-HQ-OAR-2020-0272` has a committed gold set today.
+AI-blind gold sets are accepted as the V2 evaluation baseline for the V1 docket set.
 
 
 
-Therefore `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430` should publish `eval_report.json` with `status: "not_available"` and a no-gold-set reason until blind gold sets are completed.
+After all three top-level `gold_set/{docket_id}.json` files are committed and evaluation is rerun, all three dockets should publish `eval_report.json` with `status: "available"`.
 
 
 
@@ -1011,7 +1017,7 @@ Implemented as of 2026-04-06.
 
 
 
-The remaining Phase 10 follow-through is blind human annotation coverage, not React site plumbing or Ollama runtime plumbing.
+The remaining Phase 10 follow-through is to keep evaluation artifacts refreshed from the accepted AI-blind gold sets. Human-blind annotation is no longer a blocker for V2.
 
 
 
@@ -1115,11 +1121,11 @@ editable gold-set templates
 
 gold-set validation before evaluation
 
-evaluation provenance describing whether a gold set is seed-derived or blind human annotation
+evaluation provenance describing whether a gold set is seed-derived, AI-blind, or blind human annotation
 
 
 
-This remains a manual human annotation workflow. The repo supports the mechanics, not the annotation judgment itself.
+This remains an annotation workflow rather than a live model feature. The repo supports the mechanics and provenance tracking; V2 accepts AI-blind annotations as sufficient.
 
 
 
@@ -1127,9 +1133,9 @@ Remaining evaluation work after Phase 10:
 
 
 
-complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+commit the AI-blind gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
 
-replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation
+keep the `EPA-HQ-OAR-2020-0272` AI-blind gold set as the V2 baseline
 
 rerun evaluation and refresh the published snapshot after each gold-set update
 
@@ -1389,11 +1395,11 @@ Remaining after Milestone 10:
 
 
 
-blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
+commit AI-blind gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`
 
-blind human replacement for the seed-derived `EPA-HQ-OAR-2020-0272` gold set
+keep the `EPA-HQ-OAR-2020-0272` AI-blind gold set as the V2 baseline
 
-evaluation refresh and published snapshot refresh after those annotations exist
+evaluation refresh and published snapshot refresh after the gold-set baseline is committed
 
 
 

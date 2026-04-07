@@ -4,16 +4,16 @@ This file provides guidance to Claude Code when working in this repository.
 
 ## Coordination
 
-This project uses `PROJECT_STATUS.md` as the tracked handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active blockers, and the next recommended task.
+This project uses `PROJECT_STATUS.md` as the tracked handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active focus, and the next recommended task.
 
-The phase specs are also tracked in Git for cross-machine continuity: `PHASE8_SPEC.md`, `PHASE9_SPEC.md`, `PHASE9.1_SPEC.md`, and `PHASE10_SPEC.md`.
+Use `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the next product plan. The old phase spec files have been retired.
 
 ## Current implementation state
 
-As of 2026-04-06, the repo is implemented through Phase 10. The operating architecture is now:
+As of 2026-04-07, the V1 substrate is implemented. The operating architecture is now:
 
 - deterministic pipeline stages build local corpus artifacts
-- Phase 7 labeling runs only against a local Ollama daemon
+- cluster labeling runs only against a local Ollama daemon
 - review artifacts are generated under `outputs/`
 - published site-safe JSON snapshots are generated under `site_data/`
 - a static React app under `site_app/` reads only from `site_data/current/`
@@ -22,7 +22,7 @@ As of 2026-04-06, the repo is implemented through Phase 10. The operating archit
 
 ## Supported local LLM runtime
 
-Only Ollama is supported for product LLM work in V1.
+Only Ollama is supported for product LLM work in V1 and planned V2 work.
 
 Validated local model profiles:
 
@@ -73,7 +73,8 @@ Federal Register does not require an API key. Regulations.gov does. Missing or i
 - The site must read `site_data/current/...` JSON only.
 - `outputs/` is for operator review artifacts, not for the live site data contract.
 - `site_data/` is a publish boundary, not a source-of-truth code asset.
-- The React site is static and read-only in Phase 10.
+- The React site is static and read-only in V1.
+- AI-blind gold sets are accepted as the V2 evaluation baseline.
 - Do not add a backend service, SSR requirement, or live inference backend.
 - Small compatibility shims for older published V1 snapshot payloads are acceptable, but the normal operator path should always refresh and republish the latest snapshot.
 
@@ -81,6 +82,6 @@ Federal Register does not require an API key. Regulations.gov does. Missing or i
 
 Claude Code acts as planner/reviewer and Codex acts as implementer. When handing off work:
 
-- keep requests concrete and phase-bounded
+- keep requests concrete and scope-bounded
 - prefer reviewing generated artifacts before asking for new implementation
 - record architecture decisions or blockers in `PROJECT_STATUS.md`
