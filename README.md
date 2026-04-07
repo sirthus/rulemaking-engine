@@ -7,7 +7,7 @@ Traceable rule-evolution analysis plus cautious comment-theme alignment for publ
 This repository is an artifact-first local product:
 
 - deterministic stages build corpus artifacts under `corpus/`
-- local Ollama batches add Phase 7 labels
+- local Ollama batches add cluster labels
 - review artifacts are written under `outputs/`
 - published site-safe JSON snapshots are written under `site_data/`
 - a static React app under `site_app/` reads only from `site_data/current/`
@@ -16,13 +16,13 @@ There is no live model API in the product path, and the site never invokes a mod
 
 ## Current Status
 
-The repo is implemented through Phase 10 for the locked three-docket EPA starter set:
+The V1 substrate is implemented for the locked three-docket EPA starter set:
 
 - `EPA-HQ-OAR-2020-0272`
 - `EPA-HQ-OAR-2018-0225`
 - `EPA-HQ-OAR-2020-0430`
 
-Phase 10 adds:
+The V1 substrate includes:
 
 - a static React snapshot viewer
 - shared Ollama model profiles and preflight checks
@@ -80,7 +80,7 @@ python cluster_comments.py
 
 ## Local Ollama Workflow
 
-Phase 7 is local-only. Start Ollama and pull one of the supported profiles:
+Cluster labeling is local-only. Start Ollama and pull one of the supported profiles:
 
 ```bash
 ollama serve
@@ -105,7 +105,7 @@ Or refresh the whole post-clustering path:
 python refresh_site_snapshot.py --model qwen3:14b
 ```
 
-That refresh command is the normal Phase 10 operator entrypoint. It now:
+That refresh command is the normal V1 operator entrypoint. It now:
 
 1. runs Ollama preflight and validates the requested model
 2. resolves the supported model profile and `no_think` behavior
@@ -173,14 +173,14 @@ Local serving behavior:
 
 The frontend loader now tolerates both:
 
-- the newer Phase 10 snapshot shape
+- the current V1 snapshot shape
 - the earlier published snapshot shape from before the richer docket index fields existed
 
-That compatibility is only a safety net. The recommended path is still to regenerate the snapshot with `refresh_site_snapshot.py` so the site gets the latest Phase 10 metadata.
+That compatibility is only a safety net. The recommended path is still to regenerate the snapshot with `refresh_site_snapshot.py` so the site gets the latest V1 metadata.
 
 ## Blind Evaluation Workflow
 
-Phase 10 makes blind gold-set mechanics a first-class repo workflow.
+The V1 workflow makes blind gold-set mechanics a first-class repo workflow.
 
 Generate a blinded packet and editable template from the current published snapshot:
 
@@ -193,7 +193,7 @@ That writes:
 - `gold_set/packets/{docket_id}.packet.json`
 - `gold_set/templates/{docket_id}.template.json`
 
-After a reviewer completes a gold set, validate it before evaluation:
+AI-blind gold sets are accepted as the V2 evaluation baseline. Validate any new or updated gold set before evaluation:
 
 ```bash
 python validate_gold_set.py --docket EPA-HQ-OAR-2020-0430 --path gold_set/EPA-HQ-OAR-2020-0430.json
@@ -205,14 +205,14 @@ Then regenerate evaluation:
 python evaluate_pipeline.py --docket EPA-HQ-OAR-2020-0430
 ```
 
-If a docket has no committed gold set yet, Phase 9 still writes an `eval_report.json` stub with `status: "not_available"`.
+If a docket lacks a committed gold set, evaluation writes an `eval_report.json` stub with `status: "not_available"`.
 
 ## Verified Commands
 
 Backend verification:
 
 ```bash
-python -m unittest test_phase5.py test_phase8.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py -v
+python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v
 ```
 
 Frontend verification:
@@ -244,16 +244,16 @@ Current non-goals:
 
 ## Portable Handoff Docs
 
-The implementation handoff docs are tracked in Git so another machine can pull the repo and know what to do next:
+The active handoff docs are tracked in Git so another machine can pull the repo and know what to do next:
 
 - `PROJECT_STATUS.md`: current state, accepted architecture decisions, verification notes, and next tasks
-- `PHASE8_SPEC.md`: report/output generation implementation contract
-- `PHASE9_SPEC.md`: evaluation harness implementation contract
-- `PHASE9.1_SPEC.md`: hardening and review-fix implementation contract
-- `PHASE10_SPEC.md`: React snapshot site, Ollama ops, and blind-evaluation workflow contract
+- `BLUEPRINT.md`: V1 substrate blueprint and implementation history
+- `V2_BLUEPRINT.md`: next product phase blueprint for the insight system
+- `README.md`: quickstart and operator workflow
+- `CLAUDE.md`: Claude Code coordination and guardrails
 
-If a fresh checkout is unclear, read `PROJECT_STATUS.md` first, then `BLUEPRINT.md`, then the latest phase spec.
+If a fresh checkout is unclear, read `PROJECT_STATUS.md` first, then `V2_BLUEPRINT.md` for the next product direction.
 
 ## Roadmap
 
-See `BLUEPRINT.md` for the broader roadmap, future-phase constraints, and the Phase 10 architecture decision that keeps the product local, static, and artifact-driven.
+See `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the insight-system roadmap.

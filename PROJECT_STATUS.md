@@ -1,20 +1,20 @@
 # Project Status
 
-Last updated: 2026-04-06
+Last updated: 2026-04-07
 
 ## Current implementation state
 
-- The repo is implemented through Phase 10.
+- The V1 substrate is implemented.
 - The pipeline remains artifact-first and local-first.
 - Deterministic stages write working artifacts under `corpus/`.
-- Phase 7 labeling runs only against local Ollama.
+- Cluster labeling runs only against local Ollama.
 - Review/operator artifacts are written under `outputs/`.
 - Published site-safe JSON snapshots are written under `site_data/`.
 - A static React app now lives under `site_app/` and reads only from `site_data/current/`.
 - Vite now serves the published snapshot in dev and copies it into `dist/` for production builds.
 - The frontend loader now tolerates earlier published V1 snapshot payloads as a compatibility shim.
 - `label_audit.json` remains retired in favor of `label_run.json`.
-- `PROJECT_STATUS.md` and the Phase 8-10 spec files are now tracked in Git for cross-machine handoff.
+- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the next product phase, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
 
 ## Architecture decisions
 
@@ -42,7 +42,7 @@ Implications:
 - Default operator model: `qwen3:14b`
 - Faster alternative: `gemma3:12b-it-q8_0`
 
-Observed Phase 7 comparison on `EPA-HQ-OAR-2020-0430`:
+Observed local labeler comparison on `EPA-HQ-OAR-2020-0430`:
 
 - `gemma3:12b-it-q8_0`
   - wall clock: about `25.2s`
@@ -93,10 +93,15 @@ Key artifact boundaries:
 
 ## Latest local verification
 
-Phase 10 verification completed on 2026-04-05:
+Python/docs verification refreshed on 2026-04-07:
 
-- backend/unit suite passed for the Phase 7 to Phase 10 Python surface:
-  - `python -m unittest test_phase5.py test_phase8.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py -v`
+- backend/unit suite passed for the local pipeline and site publishing Python surface:
+  - `python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v`
+- docs cleanup verification passed:
+  - `git diff --check`
+
+Frontend verification last passed on 2026-04-05:
+
 - frontend verification passed:
   - `npm test`
   - `npm run build`
@@ -105,22 +110,21 @@ Phase 10 verification completed on 2026-04-05:
   - selector fixes in `App.test.tsx`
   - Vite snapshot-serving support in dev/build
   - legacy published snapshot compatibility in the frontend loader
-- real local Phase 7 smoke runs completed for:
+- real local labeler smoke runs completed for:
   - `qwen3:14b --no-think --force`
   - `gemma3:12b-it-q8_0 --force`
 - real local refresh/publish path completed for:
   - `refresh_site_snapshot.py --docket EPA-HQ-OAR-2020-0430 --model qwen3:14b --force-labels`
 
-## Active blockers
+## Active focus
 
-- External evaluation reporting is still blocked by gold-set quality. Only `EPA-HQ-OAR-2020-0272` has a committed gold set, and that set is seed-derived rather than blind human annotation.
-- Full blind gold sets do not yet exist for `EPA-HQ-OAR-2018-0225` or `EPA-HQ-OAR-2020-0430`.
-- If the site shows evaluation as `not_available` for `EPA-HQ-OAR-2018-0225` or `EPA-HQ-OAR-2020-0430`, that is expected until those gold sets are completed and committed.
+- Human-blind annotation is no longer a blocker for V2. AI-blind gold sets are accepted as the V2 evaluation baseline.
+- The next product gap is insight quality: the current site is mostly an artifact viewer, while V2 should surface rulemaking narratives, ranked findings, and evidence-backed explanations.
+- If the site shows stale or unavailable evaluation for any docket, rerun `evaluate_pipeline.py` or `refresh_site_snapshot.py --model qwen3:14b` after committing the gold-set baseline.
 
 ## Notes for the next implementation pass
 
-- Generate blind annotation packets for the remaining two dockets.
-- Complete blind human gold sets for `EPA-HQ-OAR-2018-0225` and `EPA-HQ-OAR-2020-0430`.
-- Replace the seed-derived `EPA-HQ-OAR-2020-0272` gold set with blind human annotation before any external reporting.
-- Rerun `evaluate_pipeline.py` or `refresh_site_snapshot.py --model qwen3:14b` after each gold-set update.
+- Commit the AI-blind gold-set baseline and the consistency test.
+- Rerun `evaluate_pipeline.py` or `refresh_site_snapshot.py --model qwen3:14b` after gold-set updates.
 - Verify the React site against the refreshed multi-docket snapshot.
+- Start V2 from `V2_BLUEPRINT.md`: add an insight artifact layer, publish it into `site_data/current/`, and upgrade the React site from artifact viewer to insight surface.

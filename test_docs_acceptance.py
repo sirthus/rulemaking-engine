@@ -7,7 +7,11 @@ CHECK_PATHS = [
     "README.md",
     "BLUEPRINT.md",
     "CLAUDE.md",
+    "PROJECT_STATUS.md",
+    "V2_BLUEPRINT.md",
     "label_clusters.py",
+    "generate_outputs.py",
+    "evaluate_pipeline.py",
     "refresh_site_snapshot.py",
     "ollama_runtime.py",
 ]
@@ -16,6 +20,15 @@ BANNED_STRINGS = [
     "pip install anthropic",
     "Anthropic-compatible",
     "claude-haiku",
+    "PHASE8_SPEC.md",
+    "PHASE9_SPEC.md",
+    "PHASE9.1_SPEC.md",
+    "PHASE10_SPEC.md",
+    "test_phase5",
+    "test_phase8",
+    "Phase 8 outputs complete",
+    "Phase 9 evaluation complete",
+    "validated Phase 10 profile list",
 ]
 
 

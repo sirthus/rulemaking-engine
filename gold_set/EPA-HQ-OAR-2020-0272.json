@@ -1,110 +1,373 @@
 {
   "docket_id": "EPA-HQ-OAR-2020-0272",
-  "annotated_at": "2026-04-05T22:05:00+00:00",
-  "annotator": "seed",
-  "notes": "Seed gold set auto-derived from pipeline output. Not a blind evaluation. Replace with human-blind annotations before reporting final metrics.",
+  "annotator": "claude-opus-4-6",
+  "annotated_at": "2026-04-06T18:00:00Z",
+  "annotation_method": "llm_blind",
+  "blinded": true,
+  "notes": "LLM-blind annotation. Judgments made from source section texts and cluster descriptions only. Pipeline predictions were not consulted.",
   "alignments": [
     {
-      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0002",
-      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0002",
-      "expected_match_type": "exact_heading",
-      "expected_change_type": "modified",
-      "notes": "ACTION:"
-    },
-    {
-      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0003",
-      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0003",
-      "expected_match_type": "exact_heading",
-      "expected_change_type": "modified",
-      "notes": "SUMMARY:"
-    },
-    {
-      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0004",
-      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0004",
-      "expected_match_type": "exact_heading",
-      "expected_change_type": "modified",
-      "notes": "DATES:"
-    },
-    {
-      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0005",
-      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0005",
-      "expected_match_type": "exact_heading",
-      "expected_change_type": "modified",
-      "notes": "ADDRESSES:"
-    },
-    {
-      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0008",
-      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0008",
-      "expected_match_type": "exact_heading",
-      "expected_change_type": "modified",
-      "notes": "I. Executive Summary"
-    },
-    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0001",
       "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0001",
       "final_section_id": "EPA-HQ-OAR-2020-0272_final_0001",
       "expected_match_type": "exact_heading",
       "expected_change_type": "unchanged",
-      "notes": "AGENCY:"
+      "notes": "Both headings are 'AGENCY:' and body text is identical: 'Environmental Protection Agency (EPA).'"
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0002",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0002",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0002",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('ACTION:'). Text changed from 'Proposed rule.' to 'Final rule.' -- standard procedural update reflecting finalization."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0003",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0003",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0003",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('SUMMARY:'). Text substantively rewritten: proposed version uses 'proposes to find' language while final uses 'finds/determines' language throughout, and the final adds a sentence about finalizing the Kentucky error correction. Structural content is the same but framing shifts from proposed to final."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0004",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0004",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0004",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('DATES:'). Content entirely different: proposed lists comment deadline and public hearing date; final states effective date of June 29, 2021."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0005",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0005",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0005",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('ADDRESSES:'). Proposed provides detailed comment submission instructions; final provides docket access information only. Content substantially rewritten for final rule context."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0006",
       "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0006",
       "final_section_id": "EPA-HQ-OAR-2020-0272_final_0006",
       "expected_match_type": "exact_heading",
       "expected_change_type": "unchanged",
-      "notes": "FOR FURTHER INFORMATION CONTACT:"
+      "notes": "Heading identical ('FOR FURTHER INFORMATION CONTACT:'). Body text is identical -- same contact person Daniel Hooper with same address, phone, and email."
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0007",
       "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0007",
       "final_section_id": "EPA-HQ-OAR-2020-0272_final_0007",
       "expected_match_type": "exact_heading",
       "expected_change_type": "unchanged",
-      "notes": "Preamble Glossary of Terms and Abbreviations"
+      "notes": "Heading identical ('Preamble Glossary of Terms and Abbreviations'). Body text identical: 'The following are abbreviations of terms used in the preamble.'"
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0008",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0008",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0008",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('I. Executive Summary'). Text rewritten from proposal framing to final rule framing. Final adds opening sentence about resolving transport obligations and shifts from 'proposed' to 'final' language throughout. Substantive policy content is the same but presentation differs."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0009",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0009",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0009",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('A. Purpose of the Regulatory Action'). Text modified: proposed says 'reducing interstate transport of certain emissions' while final says 'eliminating emissions in certain upwind states.' Final also adds detail about EGU budget effective dates and SNCR optimization. Cross-references updated (Section V vs Section IV). Substantive policy additions regarding SNCR controls and compliance timing."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0010",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0010",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0010",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('B. Summary of the Major Provisions of the Regulatory Action'). Extensive modifications: final adds SNCR optimization to control stringency ($1,800/ton), adds safety valve allowance conversion mechanism (18:1 ratio), specifies mandatory 8:1 conversion ratio for initial bank, adds retirement-based budget adjustment methodology. Section cross-references renumbered. Major substantive changes responsive to comments."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0011",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0011",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0011",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('C. Costs and Benefits'). Substantially different content: proposed did not quantify health benefits and reported negative net benefits at 7% discount; final includes monetized health benefits ($3.2B-$25B at 7%) and much larger climate benefits ($4.4B at 3%), yielding large positive net benefits. This is a major substantive change."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0012",
       "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0012",
       "final_section_id": null,
       "expected_match_type": "unmatched",
       "expected_change_type": "removed",
-      "notes": "A. Written Comments"
+      "notes": "Proposed section 'A. Written Comments' has no final counterpart. This is a procedural section about comment submission instructions that is not needed in a final rule."
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0013",
       "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0013",
       "final_section_id": null,
       "expected_match_type": "unmatched",
       "expected_change_type": "removed",
-      "notes": "B. Participation in Virtual Public Hearing"
+      "notes": "Proposed section 'B. Participation in Virtual Public Hearing' has no final counterpart. Public hearing instructions are only relevant to the proposed rule comment period."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0014",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0014",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0012",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('A. Does this action apply to me?'). Text modified: proposed references 'Table III.A-1' while final references 'Table II.A-1'; proposed mentions requesting comment on non-EGU control strategies while final directs readers to 40 CFR 97.1004 applicability criteria. Shifts from tentative to definitive language."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0015",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0015",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0013",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('A. Statutory Authority'). Body text differs minimally through footnote renumbering (for example 21/22 becomes 22/23), so this is modified under the pipeline's strict body-hash change semantics."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0016",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0016",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0014",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('B. Prior Good Neighbor Rulemakings Addressing Regional Ozone'). Text nearly identical but footnote numbers differ (35 vs 36), indicating minor editorial changes. Substantive content appears unchanged."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0017",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0017",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0015",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "Heading identical ('A. The Interstate Ozone Transport Challenge'). Body text is identical in both versions."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0018",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0018",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0016",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('1. Nature of Ozone and the Ozone NAAQS'). Body text differs minimally through footnote renumbering (for example 49/50 becomes 50/51), so this is modified under the pipeline's strict body-hash change semantics."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0019",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0019",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0017",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('2. Ozone Transport'). Text nearly identical but footnote number differs (51 vs 52), indicating minor editorial renumbering. Substantive content appears unchanged."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0020",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0020",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0018",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('3. Health and Environmental Effects'). Text modified: references updated from November 2014 RIA to October 2020 RIA. Substantive health effects description appears unchanged but supporting document references updated."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0021",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0021",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0019",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('B. Relationship Between This Regulatory Action and the 2015 Ozone NAAQS'). Text modified: proposed includes citation to scientific evidence basis (footnote 53) and references 'proposed action'; final drops that citation, references 'final action', and adds language about consideration of EGU and non-EGU control requirements and notes EPA received comments on the topic."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0022",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0022",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0020",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('1. Events Affecting Application of the Good Neighbor Provision for the 2008 Ozone NAAQS'). Text nearly identical; minor capitalization difference ('Section' vs 'section'). Substantive content unchanged."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0023",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0023",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0021",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('a. The CSAPR Update'). Text nearly identical; minor wording differences ('address remanded' vs 'address the remanded'; 'four-step' vs '4-step'). Footnote renumbering. Substantive content unchanged."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0024",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0024",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0022",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('b. Partial Nature of the CSAPR Update'). Body text differs through minor wording changes such as 'one percent' to '1 percent' and later phrasing updates, so this is modified under the pipeline's strict body-hash change semantics."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_alignment_0025",
+      "proposed_section_id": "EPA-HQ-OAR-2020-0272_proposed_0025",
+      "final_section_id": "EPA-HQ-OAR-2020-0272_final_0023",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "Heading identical ('c. The CSAPR Close-Out'). Text nearly identical but footnote number differs (56 vs 57). Substantive historical content unchanged."
     }
   ],
   "cluster_relevance": [
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
       "card_id": "EPA-HQ-OAR-2020-0272_card_0001",
       "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0012",
-      "relevance": "relevant",
-      "notes": "The ACTION card inherits a directly attributed comment from the state accountability cluster."
+      "relevance": "not_relevant",
+      "notes": "Card is about the ACTION section (procedural change from 'Proposed rule' to 'Final rule'). Cluster 0012 is about state responsibility for pollution and global warming. No substantive connection to a procedural heading change."
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0006",
       "card_id": "EPA-HQ-OAR-2020-0272_card_0006",
       "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
       "relevance": "relevant",
-      "notes": "Purpose-of-action changes are linked to comments in the main revised CSAPR Update cluster."
+      "notes": "Card is about 'A. Purpose of the Regulatory Action' which describes the rationale for reducing interstate NOx transport under the good neighbor provision. Cluster 0001 contains broad stakeholder comments on the revised CSAPR ozone NAAQS rule, directly on-topic for this section's subject matter."
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0007",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0007",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Card is about 'B. Summary of the Major Provisions' covering the 4-step good neighbor framework and EGU emission budgets. Cluster 0001 contains broad stakeholder comments on the revised CSAPR including keywords 'ozone', 'naaqs', 'pollution', 'state', 'update' -- directly relevant to the major provisions summary."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0007",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0007",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0010",
+      "relevance": "partially_relevant",
+      "notes": "Card covers major provisions including NOx emission budgets and control strategies. Cluster 0010 is about nitrogen reduction for harbor protection (Accabonac Harbor). The connection is indirect: the cluster supports nitrogen/NOx emission reductions generally, but focuses on a specific local harbor issue rather than the interstate transport framework described in this section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0008",
       "card_id": "EPA-HQ-OAR-2020-0272_card_0008",
       "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0013",
       "relevance": "relevant",
-      "notes": "Costs and benefits discussion is linked to the cluster about CSAPR insufficiency and transport reduction."
+      "notes": "Card is about 'C. Costs and Benefits' section. Cluster 0013 concerns CSAPR insufficiency in ozone transport reduction, with keywords including 'benefits', 'cost', 'discount', 'million', 'nonattainment', 'emissions'. This cluster directly discusses cost-benefit aspects of the CSAPR proposal."
     },
     {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0009",
       "card_id": "EPA-HQ-OAR-2020-0272_card_0009",
-      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0037",
-      "relevance": "relevant",
-      "notes": "The removed written-comments section is linked to a filing and download difficulties cluster through attributed comments."
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "partially_relevant",
+      "notes": "Card is about the removed 'A. Written Comments' section (comment submission instructions). Cluster 0001 is a broad set of stakeholder comments on the CSAPR rule. The connection is indirect -- the cluster represents commenters who used the submission process described in this section, but the section itself is procedural, not substantive."
     },
     {
-      "card_id": "EPA-HQ-OAR-2020-0272_card_0010",
-      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0034",
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0009",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0004",
+      "relevance": "not_relevant",
+      "notes": "Card is about removed comment submission instructions. Cluster 0004 appears to be Virginia/NJ environmental department submissions. No substantive connection to the procedural comment submission section beyond the fact that these entities submitted comments."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0009",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Card is about removed comment submission instructions. Cluster 0003 is a coalition of environmental NGOs (Earthjustice, Sierra Club, etc.) advocating policy integrity. No substantive connection to a procedural comment submission section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0014",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0014",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "partially_relevant",
+      "notes": "Card is about '1. Nature of Ozone and the Ozone NAAQS' describing ozone formation chemistry. Cluster 0001 is broad CSAPR stakeholder comments. The cluster's keywords ('ozone', 'naaqs') connect to the topic, but the section is mainly scientific background rather than a policy point commenters would specifically address."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
       "relevance": "relevant",
-      "notes": "The virtual hearing participation section is linked to a child respiratory health cluster via attributed comments."
+      "notes": "Card is about '2. Ozone Transport' describing regional-scale interstate NOx/ozone transport. Cluster 0001 is about the revised CSAPR ozone NAAQS rule. Keywords include 'ozone', 'pollution', 'state', 'cross' -- directly relevant to the interstate ozone transport discussion."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0013",
+      "relevance": "relevant",
+      "notes": "Card is about ozone transport. Cluster 0013 concerns CSAPR insufficiency in ozone transport reduction with keywords 'states', 'contribute', 'nonattainment', 'csapr', 'emissions'. Directly relevant -- this cluster specifically addresses the adequacy of the CSAPR Update in reducing ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0023",
+      "relevance": "partially_relevant",
+      "notes": "Card is about ozone transport. Cluster 0023 concerns unintended consequences of compliance rules in New York, with keywords about 'baselines', 'compliance', 'camd'. The connection is indirect -- the cluster addresses compliance implications of the ozone transport rule rather than the transport phenomenon itself."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0016",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0016",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "partially_relevant",
+      "notes": "Card is about '3. Health and Environmental Effects' of ozone. Cluster 0001 is broad CSAPR stakeholder comments. The health effects section provides context for the rule but is primarily background science. Stakeholder comments are more likely focused on specific policy provisions than health effect descriptions."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0016",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0016",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0004",
+      "relevance": "partially_relevant",
+      "notes": "Card is about health and environmental effects. Cluster 0004 includes Virginia/NJ environmental department submissions with 'environmental' and 'quality' keywords. State environmental agencies would be concerned with health effects, but the cluster description suggests these are general submissions rather than comments specifically on health effects."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0016",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0016",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0003",
+      "relevance": "relevant",
+      "notes": "Card is about health and environmental effects of ozone. Cluster 0003 is a coalition of environmental NGOs (Earthjustice, Sierra Club, Appalachian, Chesapeake, Downwinders) advocating for regulatory rigor and comprehensive environmental protection. Environmental NGOs commonly emphasize health and environmental effects in their comments to support stronger regulation."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0017",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0017",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Card is about the relationship between this rulemaking and the 2015 ozone NAAQS. Cluster 0001 covers broad CSAPR stakeholder comments with 'ozone', 'naaqs' keywords. Commenters frequently addressed the scope of the rulemaking vis-a-vis newer NAAQS standards, making this cluster relevant."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0019",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0019",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Card is about 'a. The CSAPR Update' background section. Cluster 0001 is about stakeholder comments on the revised CSAPR ozone NAAQS rule, with keywords including 'cross', 'pollution', 'update'. Directly relevant -- comments on the revised CSAPR would naturally address the history of the original CSAPR Update."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0019",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0019",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0012",
+      "relevance": "partially_relevant",
+      "notes": "Card is about the CSAPR Update background. Cluster 0012 concerns state responsibility for pollution and global warming. The CSAPR Update assigns interstate transport obligations to specific states, which relates to the concept of state responsibility. However, the cluster's focus on global warming is tangential to the 2008 ozone NAAQS transport framework."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0019",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0019",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0013",
+      "relevance": "relevant",
+      "notes": "Card is about the CSAPR Update. Cluster 0013 directly concerns CSAPR insufficiency in ozone transport reduction. Keywords include 'csapr', 'address', 'nonattainment', 'emissions'. This cluster specifically discusses the inadequacies of the CSAPR Update, making it directly relevant to this background section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0020",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0020",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Card is about 'b. Partial Nature of the CSAPR Update' explaining EPA's acknowledgment of partial remedy. Cluster 0001 is broad CSAPR stakeholder comments with keywords including 'revised', 'update', 'ozone', 'naaqs'. Comments on the revised CSAPR would naturally address the partial nature of the prior rule."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0022",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0022",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Card is about '2. FIP Authority for Each State Covered by the Final Rule.' Cluster 0001 includes broad stakeholder comments on the CSAPR with keywords 'state', 'ozone', 'naaqs'. FIP authority for covered states is central to the CSAPR revision and a natural topic for stakeholder comment."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0022",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0022",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0008",
+      "relevance": "not_relevant",
+      "notes": "Card is about FIP authority for covered states. Cluster 0008 is a request for a 45-day comment extension due to beta site issues. A procedural extension request has no substantive connection to FIP legal authority."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2020-0272_cluster_0022",
+      "card_id": "EPA-HQ-OAR-2020-0272_card_0022",
+      "cluster_id": "EPA-HQ-OAR-2020-0272_cluster_0012",
+      "relevance": "partially_relevant",
+      "notes": "Card is about FIP authority for each state covered by the rule. Cluster 0012 concerns state responsibility for pollution with keywords 'state', 'states', 'pollution', 'action'. The concept of state responsibility for pollution connects to FIP authority (which arises when states fail to adequately address their obligations), but the cluster focuses on global warming rather than the specific legal framework for FIPs."
     }
   ]
 }

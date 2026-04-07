@@ -337,7 +337,7 @@ def main():
         if report is not None:
             reports.append(report)
 
-    print("=== Phase 9 evaluation complete ===")
+    print("=== Evaluation complete ===")
     for report in reports:
         if report.get("status") == "available":
             print(

@@ -1,0 +1,474 @@
+{
+  "docket_id": "EPA-HQ-OAR-2018-0225",
+  "annotator": "claude-opus-4-6",
+  "annotated_at": "2026-04-06T12:00:00+00:00",
+  "annotation_method": "llm_blind",
+  "blinded": true,
+  "notes": "LLM-blind annotation. Judgments made from source section texts and cluster descriptions only. Pipeline predictions were not consulted.",
+  "alignments": [
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0001",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0001",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "AGENCY: heading identical, body text identical ('Environmental Protection Agency (EPA).')."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0002",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0002",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ACTION: heading identical. Text changed from 'Proposed rule.' to 'Final rule.' -- standard procedural update."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0003",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0003",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "SUMMARY: heading identical. Text substantially rewritten to shift from proposing a determination to finalizing it, with additional detail on the 2023 analytic year and revised language throughout."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0004",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0004",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "DATES: heading identical. Text changed from comment deadline (Aug 31 2018) to effective date (Feb 19 2019)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0005",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0005",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "ADDRESSES: heading identical. Proposed version had detailed comment submission instructions and public hearing info; final version is shorter docket reference only."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0006",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0006",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "FOR FURTHER INFORMATION CONTACT: heading identical. Contact person changed from Brian Fisher to David Risley, with different phone number and email."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0007",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0007",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "unchanged",
+      "notes": "SUPPLEMENTARY INFORMATION: heading identical. Body text substantively identical (minor capitalization difference 'entities' vs 'Entities' is not substantive)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0008",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0008",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "I. General Information: heading identical. Final version absorbs the 'Where can I get a copy' subsection content into this section, making it longer."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0009",
+      "final_section_id": null,
+      "expected_match_type": "unmatched",
+      "expected_change_type": "removed",
+      "notes": "Proposed 'Where can I get a copy...' (docket info) is paired with final '2. Emission Inventories' which is a completely different topic. The proposed section's content was absorbed into final section 0008 (I. General Information). This proposed section has no standalone counterpart in the final rule; the pipeline alignment is a mismatch."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0010",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0010",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'States Covered by This Action' vs final 'B. States Covered by This Action'. Same topic with added section prefix. Text modified: updated Kentucky SIP from proposed to finalized approval, minor wording changes."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0011",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0011",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'A. Ground-Level Ozone Pollution and Public Health' vs final 'A. Ground-level Ozone Pollution and Public Health'. Capitalization difference in 'Level/level'. Text modified: 'proposed action' changed to 'final action', footnote renumbering, added concluding sentence about NOx control strategies."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0012",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0012",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'B. The EPA's Statutory Authority for This Proposed Action' vs final 'B. The EPA's Statutory Authority for This Final Action'. Heading change reflects proposed-to-final transition. Text similarly updated."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0013",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0013",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "C. Good Neighbor Obligations for the 2008 Ozone NAAQS: heading identical. Text modified with added precision (0.075 ppm notation) and standard proposed-to-final language updates."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0014",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0014",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "D. Summary of the CSAPR Update: heading identical. Text modified with minor wording changes ('significantly contributes' to 'will significantly contribute', footnote renumbering, 'seven' spelled out)."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0015",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0015",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed 'III. Proposed Determination...' vs final 'III. Final Determination...'. Heading differs by proposed/final. Text substantially reworded to reflect finalization rather than proposal."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0016",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0016",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "A. Analytic Approach: heading identical. Text substantially rewritten to emphasize the four-step framework more explicitly in the final, with different introductory framing."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0017",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0017",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "B. Selection of a Future Analytic Year: heading identical. Text modified with expanded discussion of court decisions and revised framing for the final rule."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0018",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0018",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "1. Attainment Dates for the 2008 Ozone NAAQS: heading identical. Text modified: removed reference to North Carolina case in opening, updated temporal references since the 2017 season had now passed."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0019",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0019",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed '2. Feasibility of Control Strategies To Reduce Ozone Season NO X' vs final '2. Feasibility of Control Strategies To Further Reduce Ozone Season NO X Emissions'. Heading expanded with 'Further' and 'Emissions'. Text substantially rewritten for the final rule."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0020",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0020",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "a. EGUs: heading identical. Text substantially rewritten in the final, with different framing focusing on the CSAPR Update's relevance to the current assessment."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0021",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0021",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "b. Non-EGU Control Technologies: heading identical. Text modified: 'non-EGUs' expanded to 'non-EGUs stationary sources', other minor wording changes."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0022",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0022",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "3. Focusing on 2023 for Analysis: heading identical. Body text differs under the strict body-hash semantics, including a large final-body expansion and textual edits such as 'emissions reductions' to 'emission reductions'."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0023",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0023",
+      "expected_match_type": "exact_heading",
+      "expected_change_type": "modified",
+      "notes": "C. Air Quality Analysis: heading identical. Text modified: 'proposed determination' to 'final determination', 'May 2018' TSD to 'June 2018' TSD, 'emissions' to 'emission'."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0024",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0026",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed '1. Definition of Nonattainment and Maintenance Receptors' mapped to final '3. Definition of Nonattainment and Maintenance Receptors'. Same topic, numbering changed due to section reordering. Text modified with standard proposed-to-final updates."
+    },
+    {
+      "proposed_section_id": "EPA-HQ-OAR-2018-0225_proposed_0025",
+      "final_section_id": "EPA-HQ-OAR-2018-0225_final_0024",
+      "expected_match_type": "fuzzy_heading",
+      "expected_change_type": "modified",
+      "notes": "Proposed '2. Overview of Air Quality Modeling Platform' mapped to final '1. Overview of Air Quality Modeling Platform'. Same topic, numbering swapped. Text modified: 'proposed rule' to 'this action', added reference to October 2017 memorandum."
+    }
+  ],
+  "cluster_relevance": [
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0001",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "partially_relevant",
+      "notes": "The ACTION section is purely procedural (proposed vs final rule label). Cluster 0001 concerns cross-state ozone pollution broadly, which is the rule's subject but not specific to the ACTION section content."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0001",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0021",
+      "relevance": "not_relevant",
+      "notes": "Human-induced sixth mass extinction is about biodiversity loss broadly, not about the ACTION section or cross-state ozone rule procedure."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0001",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0025",
+      "relevance": "partially_relevant",
+      "notes": "Cluster about finalizing the cross-state air rule without analysis is topically connected to the rulemaking action, though the ACTION section itself is just a label. The cluster discusses the finalization process."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0005",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0005",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0015",
+      "relevance": "not_relevant",
+      "notes": "NYSDEC submission with contact information is a government comment cover letter, not substantively related to the FOR FURTHER INFORMATION CONTACT section which lists EPA staff contacts."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0005",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0005",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0016",
+      "relevance": "not_relevant",
+      "notes": "TCEQ comments on EPA ozone rule approvals address substantive rule content, not the contact information section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0006",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0006",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is unrelated to the I. General Information section, which is a brief introductory pronoun definition and docket reference."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0007",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0007",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "This alignment pairs proposed docket info with final emission inventories (a mismatch). Wildfire/forest management comments are not relevant to either the docket information section or the emission inventories methodology."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0007",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0007",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0009",
+      "relevance": "not_relevant",
+      "notes": "Human waste on urban streets is completely off-topic relative to both the docket information section and emission inventories."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0008",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0008",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution rule opposition directly addresses the subject of the States Covered section, which discusses which states have good neighbor obligations under the CSAPR Update for interstate ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0008",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0008",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is a different topic from the states covered by CSAPR Update interstate transport obligations."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0008",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0008",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision directly concerns the states covered by this action and their interstate transport obligations."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0009",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution concerns directly relate to the Ground-Level Ozone Pollution and Public Health section, which discusses health effects and the science of ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0009",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "partially_relevant",
+      "notes": "Wildfire emissions can contribute to ozone precursors and are tangentially related to the ozone pollution and public health discussion, but the section focuses on anthropogenic NOx sources and interstate transport, not wildfire emissions."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0009",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0009",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision are concerned about cross-state pollution health impacts, which is directly addressed in the ozone pollution and public health section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0010",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0010",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution rule opposition is directly relevant to the statutory authority section for the good neighbor provision under CAA 110(a)(2)(D)(i)(I)."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0010",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0010",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0023",
+      "relevance": "relevant",
+      "notes": "Concerns about relaxation of cross-state pollution restrictions directly relate to the statutory authority discussion, which explains EPA's legal basis for the good neighbor provision."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0010",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0010",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0025",
+      "relevance": "relevant",
+      "notes": "Concerns about finalizing the cross-state air rule without adequate analysis relate to the statutory authority section, which provides the legal framework under which the determination is made."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0011",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0011",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision directly discuss the good neighbor obligations for the 2008 ozone NAAQS, which is the exact topic of this section."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0011",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0011",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0006",
+      "relevance": "relevant",
+      "notes": "Commenters directly addressing EPA's determination on good neighbor obligations under the 2008 ozone NAAQS -- this is the exact topic of section II.C."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0011",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0011",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0016",
+      "relevance": "relevant",
+      "notes": "TCEQ comments on EPA ozone rule approvals and promulgations are relevant to the good neighbor obligations section, as Texas is one of the states whose obligations are being assessed."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0012",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0012",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution rule opposition directly relates to the CSAPR Update summary, which describes the rule's purpose to reduce interstate ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0012",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0012",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is not related to the summary of the CSAPR Update, which focuses on EGU NOx emissions budgets and interstate ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0012",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0012",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0017",
+      "relevance": "relevant",
+      "notes": "Delaware's submission on the CSAPR Close-Out is directly relevant to a section summarizing the CSAPR Update, as Delaware is a downwind state affected by interstate ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0013",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0013",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution opposition is directly relevant to the section on the final determination regarding good neighbor obligations, the core substantive action of this rule."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0013",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0013",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision directly concerns the determination that the CSAPR Update fully addresses good neighbor obligations."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0013",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0013",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0006",
+      "relevance": "relevant",
+      "notes": "Commenters directly responding to EPA's proposed determination on good neighbor obligations -- this is the exact subject of section III."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0014",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0014",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is not related to the four-step analytic framework for interstate ozone transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0014",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0014",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "partially_relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision are concerned about the overall rule, but the analytic approach section is technical methodology, not directly about state-level impacts."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is not related to the selection of a future analytic year for ozone transport assessment."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0009",
+      "relevance": "not_relevant",
+      "notes": "Human waste on urban streets is completely unrelated to the selection of a future analytic year for ozone NAAQS assessment."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0015",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0015",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0012",
+      "relevance": "not_relevant",
+      "notes": "Wind energy waste and emissions in Germany is unrelated to the selection of a future analytic year for US ozone NAAQS interstate transport assessment."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0017",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0017",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "not_relevant",
+      "notes": "Wildfire emissions and forest management is not related to the feasibility of NOx control strategies for EGUs and non-EGUs."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0019",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0019",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0005",
+      "relevance": "partially_relevant",
+      "notes": "Comments about enforcement of air regulations have an indirect connection to the non-EGU control technologies section, which discusses feasibility of implementing NOx controls. Enforcement concerns could relate to whether existing controls are actually being complied with, but the section focuses on technical feasibility rather than enforcement."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0020",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0020",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution rule opposition is relevant to the section focusing on 2023 for analysis, which determines the timeline for evaluating whether interstate ozone transport obligations are met."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0021",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0021",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution opposition is relevant to the air quality analysis section, which presents modeling of ozone concentrations and interstate transport."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0021",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0021",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "partially_relevant",
+      "notes": "Wildfire emissions could be tangentially relevant to air quality analysis since the modeling platform includes wildfire emission inventories, but the cluster focuses on forest management rather than air quality modeling methodology."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0021",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0021",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0006",
+      "relevance": "relevant",
+      "notes": "Commenters addressing EPA's good neighbor obligations determination are relevant to the air quality analysis section, which provides the technical basis for that determination."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0023",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0023",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0015",
+      "relevance": "not_relevant",
+      "notes": "NYSDEC submission with contact information is a cover letter, not substantively related to the air quality modeling platform overview."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0024",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0024",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0001",
+      "relevance": "relevant",
+      "notes": "Cross-state ozone pollution opposition is relevant to the emissions inventories section (proposed section 0026, marked removed), which details the emission data underlying the interstate transport analysis."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0024",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0024",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0003",
+      "relevance": "partially_relevant",
+      "notes": "Wildfire emissions and forest management has a partial connection since the emissions inventories section explicitly includes wildfire and prescribed fire emission estimates in the modeling."
+    },
+    {
+      "task_id": "EPA-HQ-OAR-2018-0225_cluster_0024",
+      "card_id": "EPA-HQ-OAR-2018-0225_card_0024",
+      "cluster_id": "EPA-HQ-OAR-2018-0225_cluster_0004",
+      "relevance": "partially_relevant",
+      "notes": "Idaho residents opposing repeal of the good neighbor provision are broadly concerned about the rule, but the emissions inventories section is technical methodology rather than directly about state-level pollution impacts."
+    }
+  ]
+}

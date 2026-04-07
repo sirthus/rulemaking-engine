@@ -4,7 +4,7 @@ import dedup_comments
 import generate_change_cards
 
 
-class Phase5Tests(unittest.TestCase):
+class CommentDedupAndSignalTests(unittest.TestCase):
     def test_empty_text_comments_stay_unique(self):
         payload = dedup_comments.build_family_payload(
             "TEST-DOCKET",
