@@ -54,6 +54,39 @@ V2 must continue to avoid causal claims. It should say "related," "aligned," "ap
   - Raw clusters/cards remain available as inspection layers.
   - Card detail explains why the card matters and links back to findings, clusters, preamble links, and source snippets.
 
+## Execution Phases
+
+These phases are intentionally light scaffolding. Claude Code should do a deeper planning pass inside each phase before implementation.
+
+1. Insight Artifact MVP
+   - Add `generate_insights.py` and `insight_report.json` v1.
+   - Start with deterministic ranking and grounded summaries from existing `report.json` and `eval_report.json`.
+   - Keep local Ollama synthesis optional or minimal in this phase.
+   - Add Python tests for schema shape, ranking behavior, missing evidence, provenance, and banned causal language.
+
+2. Publishing and Refresh Integration
+   - Publish `insight_report.json` into `site_data/current/dockets/{docket_id}/`.
+   - Add `insight_report_path` and insight availability to docket index entries.
+   - Update refresh flow order: labels, outputs, evaluation, insights, publish.
+   - Extend publish and refresh tests for present and missing insight artifacts.
+
+3. React Insight Surface
+   - Add frontend types and loader support for insight reports.
+   - Make the docket page open with executive summary, top findings, and ranked priority cards.
+   - Keep raw clusters and change cards available as inspection layers.
+   - Add missing-insight fallback UI so V1-style snapshots still render.
+
+4. Evidence Drilldown
+   - Upgrade card detail pages to explain why a card matters.
+   - Link findings back to card IDs, cluster IDs, preamble links, and source snippets.
+   - Preserve the "related/aligned/appears responsive" language discipline and avoid causal claims.
+
+5. End-to-End Quality Pass
+   - Run the full local pipeline on all three dockets.
+   - Confirm all three publish insight reports and evaluation remains available.
+   - Run backend tests, frontend tests, build, and `git diff --check`.
+   - Update `PROJECT_STATUS.md` with the completed phase and next recommended phase.
+
 ## Agent Workflow
 
 - Codex implements and runs tests.
