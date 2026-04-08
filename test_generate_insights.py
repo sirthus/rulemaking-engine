@@ -131,6 +131,10 @@ def test_schema_shape():
         "summary",
         "why_it_matters",
         "evidence_note",
+        "evidence_card_id",
+        "evidence_section_title",
+        "evidence_card_score",
+        "evidence_cluster_comment_count",
         "card_ids",
         "cluster_ids",
     }
@@ -238,3 +242,60 @@ def test_no_related_clusters_cards():
 
     assert "card-5" in priority_cards
     assert priority_cards["card-5"]["finding_ids"] == []
+
+
+def test_finding_evidence_is_cluster_specific():
+    report = generate_insights.build_insight_report(
+        {
+            "schema_version": "v1",
+            "docket_id": "TEST-DOCKET",
+            "clusters": [
+                {
+                    "cluster_id": "cluster-large",
+                    "label": "Large Theme",
+                    "label_description": "Large theme.",
+                    "canonical_count": 5,
+                },
+                {
+                    "cluster_id": "cluster-small",
+                    "label": "Small Theme",
+                    "label_description": "Small theme.",
+                    "canonical_count": 4,
+                },
+            ],
+            "change_cards": [
+                {
+                    "card_id": "card-shared",
+                    "section_title": "Written comments",
+                    "change_type": "modified",
+                    "proposed_section_id": "section-1",
+                    "alignment_signal": {
+                        "level": "high",
+                        "score": 82,
+                        "evidence_note": "41 comments attributed (best: keyword/medium); no preamble discussion linked.",
+                    },
+                    "related_clusters": [
+                        {"cluster_id": "cluster-large", "comment_count": 20},
+                        {"cluster_id": "cluster-small", "comment_count": 1},
+                    ],
+                }
+            ],
+        },
+        eval_report={"status": "available"},
+        generated_at="2026-04-07T12:00:00+00:00",
+    )
+
+    large_finding = report["top_findings"][0]
+    small_finding = report["top_findings"][1]
+
+    assert large_finding["evidence_card_id"] == "card-shared"
+    assert small_finding["evidence_card_id"] == "card-shared"
+    assert large_finding["evidence_section_title"] == "Written comments"
+    assert large_finding["evidence_card_score"] == 82
+    assert large_finding["evidence_cluster_comment_count"] == 20
+    assert small_finding["evidence_cluster_comment_count"] == 1
+    assert "41 comments attributed" not in large_finding["evidence_note"]
+    assert "41 comments attributed" not in small_finding["evidence_note"]
+    assert "20 comment(s) from this theme linked to the card" in large_finding["evidence_note"]
+    assert "1 comment(s) from this theme linked to the card" in small_finding["evidence_note"]
+    assert large_finding["evidence_note"] != small_finding["evidence_note"]

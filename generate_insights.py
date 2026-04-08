@@ -195,6 +195,46 @@ def highest_scoring_card(cards: list[dict]) -> dict | None:
     )[0]
 
 
+def related_cluster_for_card(card: dict, cluster_id: str) -> dict | None:
+    for related_cluster in card.get("related_clusters", []) or []:
+        if isinstance(related_cluster, dict) and related_cluster.get("cluster_id") == cluster_id:
+            return related_cluster
+    return None
+
+
+def build_finding_evidence(evidence_card: dict | None, cluster_id: str) -> dict:
+    if evidence_card is None:
+        return {
+            "evidence_note": "",
+            "evidence_card_id": None,
+            "evidence_section_title": None,
+            "evidence_card_score": None,
+            "evidence_cluster_comment_count": None,
+        }
+
+    card_id = card_identifier(evidence_card)
+    title = section_title(evidence_card)
+    score = alignment_score(evidence_card)
+    level = alignment_level(evidence_card)
+    related_cluster = related_cluster_for_card(evidence_card, cluster_id)
+    comment_count = None
+    if related_cluster is not None and isinstance(related_cluster.get("comment_count"), (int, float)):
+        comment_count = int(related_cluster["comment_count"])
+
+    note_parts = [f"Top linked change card: {title} ({card_id})"]
+    if comment_count is not None:
+        note_parts.append(f"{comment_count} comment(s) from this theme linked to the card")
+    note_parts.append(f"card-level signal {level} (score {score:g})")
+
+    return {
+        "evidence_note": "; ".join(note_parts) + ".",
+        "evidence_card_id": card_id,
+        "evidence_section_title": title,
+        "evidence_card_score": score,
+        "evidence_cluster_comment_count": comment_count,
+    }
+
+
 def build_top_findings(clusters: list[dict], cards: list[dict]) -> list[dict]:
     findings = []
 
@@ -203,9 +243,7 @@ def build_top_findings(clusters: list[dict], cards: list[dict]) -> list[dict]:
         finding_cards = cards_for_cluster(cards, cluster_id)
         card_ids = [card_identifier(card) for card in finding_cards if card_identifier(card)]
         evidence_card = highest_scoring_card(finding_cards)
-        evidence_note = ""
-        if evidence_card is not None:
-            evidence_note = alignment_signal(evidence_card).get("evidence_note") or ""
+        evidence_payload = build_finding_evidence(evidence_card, cluster_id)
 
         label_description = cluster.get("label_description") or ""
         summary = f"{label_description} This theme appears across {len(card_ids)} regulatory change(s).".strip()
@@ -215,7 +253,7 @@ def build_top_findings(clusters: list[dict], cards: list[dict]) -> list[dict]:
                 "title": cluster.get("label") or "",
                 "summary": summary,
                 "why_it_matters": why_it_matters(finding_cards),
-                "evidence_note": evidence_note,
+                **evidence_payload,
                 "card_ids": card_ids,
                 "cluster_ids": [cluster_id],
             }

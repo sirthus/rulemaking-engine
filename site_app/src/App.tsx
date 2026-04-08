@@ -7,13 +7,31 @@ import {
   useParams,
   useSearchParams,
 } from "react-router-dom";
-import type { ChangeCard, DocketIndex, EvalReport, Report, SnapshotManifest } from "./models";
-import { loadDocketIndex, loadEvalReport, loadManifest, loadReport, summarizeMetricBlock } from "./snapshot";
+import type {
+  ChangeCard,
+  DocketIndex,
+  EvalReport,
+  InsightFinding,
+  InsightPriorityCard,
+  InsightReport,
+  Report,
+  SnapshotManifest,
+} from "./models";
+import {
+  loadDocketIndex,
+  loadEvalReport,
+  loadInsightReport,
+  loadManifest,
+  loadReport,
+  summarizeMetricBlock,
+} from "./snapshot";
 
 type LoadState<T> =
   | { status: "loading" }
   | { status: "error"; error: string }
   | { status: "ready"; data: T };
+
+const LINKED_FINDING_LIMIT = 5;
 
 function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[]): LoadState<T> {
   const [state, setState] = useState<LoadState<T>>({ status: "loading" });
@@ -190,6 +208,7 @@ function DocketPage() {
   const docketId = params.docketId ?? "";
   const reportState = useAsyncData<Report>(() => loadReport(docketId), [docketId]);
   const evalState = useAsyncData<EvalReport>(() => loadEvalReport(docketId), [docketId]);
+  const insightState = useAsyncData<InsightReport | null>(() => loadInsightReport(docketId), [docketId]);
   const [searchParams, setSearchParams] = useSearchParams();
 
   if (reportState.status === "loading" || evalState.status === "loading") {
@@ -204,6 +223,10 @@ function DocketPage() {
 
   const report = reportState.data;
   const evalReport = evalState.data;
+  const insightReport = insightState.status === "ready" ? insightState.data : null;
+  const visibleTopFindings = insightReport
+    ? insightReport.top_findings.filter((finding) => finding.card_ids.length > 0).slice(0, 5)
+    : [];
   const changeType = searchParams.get("changeType") || "all";
   const signal = searchParams.get("signal") || "all";
   const reviewStatus = searchParams.get("reviewStatus") || "all";
@@ -260,7 +283,7 @@ function DocketPage() {
   return (
     <AppChrome>
       <section className="hero panel">
-        <p className="eyebrow">{report.docket_id}</p>
+        <p className="eyebrow">Docket</p>
         <h1>{report.docket_id}</h1>
         <p className="lead">Published {formatStamp(report.generated_at)} from the local artifact pipeline.</p>
         <div className="stat-grid">
@@ -309,6 +332,53 @@ function DocketPage() {
           </ul>
         ) : null}
       </section>
+
+      {insightReport ? (
+        <section className="panel insight-banner">
+          <div className="section-header">
+            <div>
+              <p className="eyebrow">Insight Report</p>
+              <h2>Docket Analysis</h2>
+            </div>
+          </div>
+
+          <p className="insight-summary">{insightReport.executive_summary}</p>
+
+          <div className="rule-story-grid">
+            <div className="rule-story-cell">
+              <p className="eyebrow">What Changed</p>
+              <p>{insightReport.rule_story.what_changed}</p>
+            </div>
+            <div className="rule-story-cell">
+              <p className="eyebrow">Commenter Themes</p>
+              <p>{insightReport.rule_story.what_commenters_emphasized}</p>
+            </div>
+            <div className="rule-story-cell">
+              <p className="eyebrow">Comment Alignment</p>
+              <p>{insightReport.rule_story.where_final_text_aligned}</p>
+            </div>
+          </div>
+
+          {visibleTopFindings.length > 0 ? (
+            <div className="finding-list">
+              <p className="eyebrow">Top Findings</p>
+              {visibleTopFindings.map((finding) => (
+                <article key={finding.finding_id} className="finding-card">
+                  <h3 className="finding-title">{finding.title}</h3>
+                  <p className="meta-line">
+                    {finding.card_ids.length} change card{finding.card_ids.length === 1 ? "" : "s"}
+                  </p>
+                  <p className="finding-summary">{finding.summary}</p>
+                  <p className="finding-summary">{finding.why_it_matters}</p>
+                  {finding.evidence_note ? <p className="meta-line">{finding.evidence_note}</p> : null}
+                </article>
+              ))}
+            </div>
+          ) : null}
+
+          <p className="meta-line insight-caveats">{insightReport.rule_story.caveats}</p>
+        </section>
+      ) : null}
 
       <section className="panel">
         <div className="section-header">
@@ -456,11 +526,96 @@ function ChangeCardRow({ docketId, card }: { docketId: string; card: ChangeCard 
   );
 }
 
+function getCardInsightContext(
+  insightReport: InsightReport | null,
+  cardId: string
+): { priorityCard: InsightPriorityCard | null; linkedFindings: InsightFinding[] } {
+  if (!insightReport) {
+    return { priorityCard: null, linkedFindings: [] };
+  }
+
+  const priorityCard = insightReport.priority_cards.find((item) => item.card_id === cardId) || null;
+  if (priorityCard) {
+    const findingsById = new Map(insightReport.top_findings.map((finding) => [finding.finding_id, finding]));
+    const linkedFindings = priorityCard.finding_ids
+      .map((findingId) => findingsById.get(findingId))
+      .filter((finding): finding is InsightFinding => Boolean(finding));
+    if (linkedFindings.length > 0) {
+      return { priorityCard, linkedFindings };
+    }
+  }
+
+  return {
+    priorityCard,
+    linkedFindings: insightReport.top_findings.filter((finding) => finding.card_ids.includes(cardId)),
+  };
+}
+
+function CardInsightPanel({
+  insightReport,
+  priorityCard,
+  linkedFindings,
+}: {
+  insightReport: InsightReport | null;
+  priorityCard: InsightPriorityCard | null;
+  linkedFindings: InsightFinding[];
+}) {
+  if (!insightReport) {
+    return null;
+  }
+
+  const visibleFindings = linkedFindings.slice(0, LINKED_FINDING_LIMIT);
+  const hiddenFindingCount = Math.max(linkedFindings.length - visibleFindings.length, 0);
+
+  return (
+    <section className="panel insight-banner">
+      <div className="section-header">
+        <div>
+          <p className="eyebrow">Insight Drilldown</p>
+          <h2>Why This Card Matters</h2>
+        </div>
+        {priorityCard ? (
+          <div className="chip-row">
+            <span className="status-chip available">score {priorityCard.score}</span>
+            <span className="status-chip">{priorityCard.alignment_level || "none"}</span>
+            <span className="status-chip">{priorityCard.change_type || "unknown"}</span>
+          </div>
+        ) : null}
+      </div>
+
+      {priorityCard ? (
+        <p className="meta-line">Priority card section: {priorityCard.section_title || "Untitled section"}</p>
+      ) : null}
+
+      {visibleFindings.length > 0 ? (
+        <div className="finding-list detail-finding-list">
+          {visibleFindings.map((finding) => (
+            <article key={finding.finding_id} className="finding-card">
+              <h3 className="finding-title">{finding.title}</h3>
+              <p className="finding-summary">{finding.why_it_matters}</p>
+              {finding.evidence_note ? <p className="meta-line">{finding.evidence_note}</p> : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p>No insight finding linked for this card.</p>
+      )}
+
+      {hiddenFindingCount > 0 ? (
+        <p className="meta-line">
+          {hiddenFindingCount} more linked finding{hiddenFindingCount === 1 ? "" : "s"} not shown.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function CardDetailPage() {
   const params = useParams<{ docketId: string; cardId: string }>();
   const docketId = params.docketId ?? "";
   const cardId = params.cardId ?? "";
   const reportState = useAsyncData<Report>(() => loadReport(docketId), [docketId]);
+  const insightState = useAsyncData<InsightReport | null>(() => loadInsightReport(docketId), [docketId]);
 
   if (reportState.status === "loading") {
     return <LoadingView label={`Loading card ${cardId}`} />;
@@ -474,6 +629,10 @@ function CardDetailPage() {
   if (!card) {
     return <Navigate to={`/dockets/${docketId}`} replace />;
   }
+
+  const insightReport = insightState.status === "ready" ? insightState.data : null;
+  const { priorityCard, linkedFindings } = getCardInsightContext(insightReport, cardId);
+  const findingClusterIds = new Set(linkedFindings.flatMap((finding) => finding.cluster_ids));
 
   return (
     <AppChrome>
@@ -489,6 +648,12 @@ function CardDetailPage() {
           <span className="status-chip">{card.review_status || "pending"}</span>
         </div>
       </section>
+
+      <CardInsightPanel
+        insightReport={insightReport}
+        priorityCard={priorityCard}
+        linkedFindings={linkedFindings}
+      />
 
       <section className="panel detail-grid">
         <div>
@@ -516,7 +681,12 @@ function CardDetailPage() {
         <div className="cluster-list">
           {(card.related_clusters || []).map((cluster) => (
             <article key={cluster.cluster_id} className="cluster-card">
-              <h3>{cluster.label || cluster.cluster_id}</h3>
+              <div className="cluster-header">
+                <h3>{cluster.label || cluster.cluster_id}</h3>
+                {findingClusterIds.has(cluster.cluster_id) ? (
+                  <span className="status-chip available">linked finding</span>
+                ) : null}
+              </div>
               <p>{cluster.label_description || "No label description available."}</p>
               <p className="meta-line">Comments linked: {cluster.comment_count || 0}</p>
             </article>

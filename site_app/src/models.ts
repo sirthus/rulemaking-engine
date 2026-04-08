@@ -20,6 +20,9 @@ export interface DocketIndexEntry {
   display_title: string;
   report_path: string;
   eval_report_path: string;
+  insight_report_path?: string | null;
+  insight_available?: boolean;
+  insight_generated_at?: string | null;
   latest_publish_at: string;
   generated_at?: string;
   evaluated_at?: string;
@@ -143,4 +146,56 @@ export interface EvalReport {
   gold_set_provenance?: GoldSetProvenance;
   alignment_metrics?: Record<string, unknown>;
   cluster_relevance_metrics?: Record<string, unknown>;
+}
+
+export interface InsightFinding {
+  finding_id: string;
+  title: string;
+  summary: string;
+  why_it_matters: string;
+  evidence_note: string;
+  evidence_card_id?: string | null;
+  evidence_section_title?: string | null;
+  evidence_card_score?: number | null;
+  evidence_cluster_comment_count?: number | null;
+  card_ids: string[];
+  cluster_ids: string[];
+}
+
+export interface InsightPriorityCard {
+  card_id: string;
+  section_title: string;
+  change_type: string;
+  score: number;
+  alignment_level: string;
+  finding_ids: string[];
+}
+
+export interface RuleStory {
+  what_changed: string;
+  what_commenters_emphasized: string;
+  where_final_text_aligned: string;
+  caveats: string;
+}
+
+export interface InsightProvenance {
+  source_report: string;
+  source_eval_report: string | null;
+  eval_available: boolean;
+  report_schema_version: string;
+  card_count: number;
+  cluster_count: number;
+  finding_count: number;
+}
+
+export interface InsightReport {
+  schema_version: "v1" | string;
+  docket_id: string;
+  generated_at: string;
+  generator: string;
+  executive_summary: string;
+  top_findings: InsightFinding[];
+  rule_story: RuleStory;
+  priority_cards: InsightPriorityCard[];
+  provenance: InsightProvenance;
 }
