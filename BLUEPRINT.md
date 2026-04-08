@@ -45,7 +45,7 @@ The current product shape is:
 
 deterministic local pipeline stages build `corpus/` artifacts
 
-Phase 7 cluster labeling runs as a local Ollama batch job only
+Phase 7 cluster labeling runs via Codex
 
 operator review artifacts are written under `outputs/`
 
@@ -987,7 +987,7 @@ For V1, all LLM-dependent stages should run offline in local batches and write d
 
 run deterministic ingestion and analysis locally
 
-run local Ollama batch jobs for the LLM-dependent stages
+run Codex batch jobs for the LLM-dependent stages
 
 persist the results as versioned artifacts
 
@@ -999,7 +999,7 @@ The future site should consume published snapshot data, not invoke a model direc
 
 
 
-Phase 10 — Static React snapshot site, Ollama ops hardening, and blind evaluation workflow
+Phase 10 — Static React snapshot site and blind evaluation workflow
 
 Goal
 
@@ -1089,7 +1089,7 @@ no live inference tools
 
 
 
-Ollama operator hardening
+LLM operator hardening
 
 
 
@@ -1098,10 +1098,6 @@ Implemented in Phase 10:
 
 
 shared model profiles for validated local models
-
-an Ollama preflight check used by the labeler and refresh workflow
-
-explicit operator guidance for missing models or stopped daemons
 
 release summaries that record model profile, token totals, and publish metadata
 
@@ -1383,7 +1379,7 @@ the site supports docket list, docket detail, and card detail routes
 
 the site exposes read-only filters for change cards and clusters
 
-Ollama preflight/model-profile behavior is shared across the local operator flow
+model-profile behavior is shared across the local operator flow
 
 release summaries are written into published snapshots
 

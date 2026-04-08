@@ -113,19 +113,7 @@ def walk_strings(value):
 
 def test_schema_shape():
     report = build_report(eval_report={"status": "available"})
-
-    assert set(report) == {
-        "schema_version",
-        "docket_id",
-        "generated_at",
-        "generator",
-        "executive_summary",
-        "top_findings",
-        "rule_story",
-        "priority_cards",
-        "provenance",
-    }
-    assert set(report["top_findings"][0]) == {
+    finding_keys = {
         "finding_id",
         "title",
         "summary",
@@ -138,6 +126,19 @@ def test_schema_shape():
         "card_ids",
         "cluster_ids",
     }
+
+    assert set(report) == {
+        "schema_version",
+        "docket_id",
+        "generated_at",
+        "generator",
+        "executive_summary",
+        "top_findings",
+        "rule_story",
+        "priority_cards",
+        "provenance",
+    }
+    assert all(set(finding) == finding_keys for finding in report["top_findings"])
     assert set(report["priority_cards"][0]) == {
         "card_id",
         "section_title",
@@ -207,8 +208,20 @@ def test_no_causal_language():
             assert term not in lowered
 
 
+def test_sanitize_causal_language_removes_banned_phrases():
+    assert generate_insights.sanitize_causal_language("Comments prompted a review.") == (
+        "Comments coincided with a review."
+    )
+    assert generate_insights.sanitize_causal_language("Comments led\tto edits.") == (
+        "Comments aligned with edits."
+    )
+    assert generate_insights.sanitize_causal_language("Comments due\u00a0to timing.") == (
+        "Comments with timing."
+    )
+
+
 def test_provenance_metadata():
-    report = build_report(eval_report={"status": "available"})
+    report = generate_insights.build_insight_report(sample_report(), eval_report={"status": "available"})
 
     datetime.fromisoformat(report["generated_at"])
     assert report["generator"] == "generate_insights.py"

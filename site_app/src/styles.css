@@ -68,7 +68,6 @@ p {
   text-decoration: none;
 }
 
-.topbar-note,
 .meta-line {
   color: var(--muted);
 }
@@ -141,12 +140,30 @@ p {
 
 .section-header,
 .cluster-header,
-.change-card-header,
 .docket-card-header {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   align-items: start;
+}
+
+.change-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 1rem;
+  align-items: start;
+}
+
+.change-card-header > div:first-child {
+  min-width: 0;
+}
+
+.change-card-header h3 {
+  overflow-wrap: anywhere;
+}
+
+.change-card-header .chip-row {
+  justify-content: flex-end;
 }
 
 .docket-grid {
@@ -159,6 +176,56 @@ p {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+}
+
+.story-card {
+  gap: 1rem;
+}
+
+.story-card-link {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.story-card-link:hover,
+.story-card-link:focus-visible {
+  border-color: rgba(29, 95, 102, 0.38);
+  box-shadow: 0 16px 36px rgba(31, 42, 46, 0.16);
+  transform: translateY(-1px);
+}
+
+.story-summary {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.story-teaser {
+  padding: 0.8rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.story-teaser p {
+  margin: 0.35rem 0 0;
+}
+
+.story-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.story-meta span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(31, 42, 46, 0.08);
 }
 
 .inline-stats {
@@ -175,10 +242,24 @@ p {
 }
 
 .action-link,
-.back-link {
+.back-link,
+.inline-action {
   color: var(--teal);
   font-weight: 700;
   text-decoration: none;
+}
+
+.inline-action {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+}
+
+.fold-control {
+  margin-top: 0.25rem;
 }
 
 .status-chip {
@@ -193,6 +274,7 @@ p {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .status-chip.available {
@@ -203,11 +285,51 @@ p {
   background: rgba(201, 107, 44, 0.16);
 }
 
+.chip-priority-high {
+  background: rgba(17, 94, 89, 0.2);
+  color: #0f3f3c;
+}
+
+.chip-priority-medium {
+  background: rgba(201, 107, 44, 0.2);
+  color: #6f3516;
+}
+
+.chip-priority-low {
+  background: rgba(93, 105, 109, 0.16);
+  color: #3f4a4e;
+}
+
+.chip-priority-process {
+  background: rgba(91, 72, 125, 0.18);
+  color: #3f315c;
+}
+
+.chip-size-large {
+  background: rgba(145, 72, 26, 0.22);
+  color: #62300f;
+}
+
+.chip-size-moderate {
+  background: rgba(29, 95, 102, 0.16);
+  color: #16474d;
+}
+
+.chip-size-minor {
+  background: rgba(31, 42, 46, 0.08);
+  color: #3f4a4e;
+}
+
 .chip-row,
 .keyword-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+}
+
+.change-card-header .chip-row {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
 .keyword-pill {
@@ -250,6 +372,13 @@ p {
   gap: 0.9rem;
 }
 
+.folded-card-group {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgba(31, 42, 46, 0.12);
+}
+
 .card-grid,
 .detail-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -258,6 +387,16 @@ p {
 .metric-list {
   margin: 0;
   padding-left: 1.1rem;
+}
+
+.quality-details {
+  margin-top: 1rem;
+}
+
+.eval-banner summary {
+  color: var(--teal);
+  font-weight: 700;
+  cursor: pointer;
 }
 
 .eval-banner.available {
@@ -329,6 +468,31 @@ p {
   font-size: 0.875rem;
 }
 
+.diff-text {
+  margin: 0.5rem 0 0;
+  white-space: pre-wrap;
+}
+
+.snippet-preview {
+  max-height: 7.5rem;
+  overflow: hidden;
+}
+
+.diff-added,
+.diff-removed {
+  padding: 0.08rem 0.12rem;
+  border-radius: 0.25rem;
+}
+
+.diff-added {
+  background: rgba(29, 95, 102, 0.16);
+  text-decoration: underline;
+}
+
+.diff-removed {
+  background: rgba(201, 107, 44, 0.16);
+}
+
 .insight-caveats {
   margin-top: 1rem;
   font-size: 0.8125rem;
@@ -346,7 +510,6 @@ p {
   .topbar,
   .section-header,
   .cluster-header,
-  .change-card-header,
   .docket-card-header {
     flex-direction: column;
     align-items: start;

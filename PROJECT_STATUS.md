@@ -2,33 +2,31 @@
 
 Last updated: 2026-04-07
 
-## Current implementation state
+## Current Implementation State
 
-- The V1 substrate is implemented.
+- The V1 substrate and V2 insight layer are implemented for the locked three-docket EPA starter set.
 - The pipeline remains artifact-first and local-first.
-- Deterministic stages write working artifacts under `corpus/`.
-- Cluster labeling runs only against local Ollama.
-- Review/operator artifacts are written under `outputs/`.
+- Local corpus stages write working artifacts under `corpus/`.
+- Cluster labeling and insight synthesis now run through Codex as the labeling agent.
+- Review/operator artifacts are written under `outputs/`, including `insight_report.json`.
 - Published site-safe JSON snapshots are written under `site_data/`.
-- A static React app now lives under `site_app/` and reads only from `site_data/current/`.
-- V2 is implemented through Phase 5: insight generation, publish/refresh integration, the React insight surface, card evidence drilldown, and final QA handoff.
-- `generate_insights.py` produces deterministic `insight_report.json` artifacts from existing docket reports and evaluation reports.
-- The React site surfaces docket-level insight summaries, ranked findings, priority cards, and card-level evidence drilldown while preserving V1 snapshot fallbacks.
-- Vite now serves the published snapshot in dev and copies it into `dist/` for production builds.
-- The frontend loader now tolerates earlier published V1 snapshot payloads as a compatibility shim.
+- A static read-only React insight surface lives under `site_app/` and reads only from `site_data/current/`.
+- The site has a docket story launcher, insight summaries, top findings, evidence drilldown, proposed/final diffs, analyst-first card sorting, and lower-signal card folding.
+- Vite serves the published snapshot in dev and copies it into `dist/` for production builds.
+- The frontend loader tolerates earlier published V1 snapshot payloads as a compatibility shim.
 - `label_audit.json` remains retired in favor of `label_run.json`.
-- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the insight-system roadmap, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
+- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the V2 implementation plan, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
 
-## Architecture decisions
+## Architecture Decisions
 
-### 2026-04-05 — local-only product path
+### 2026-04-05 — Local-Only Product Path
 
 The product path should not use a live model API.
 
 Chosen operating model:
 
-1. Run deterministic ingestion and analysis locally.
-2. Run LLM labeling locally in batches with Ollama.
+1. Run local ingestion and analysis stages.
+2. Use Codex for labeling and insight generation whenever judgment or synthesis helps.
 3. Regenerate review outputs.
 4. Publish a clean JSON snapshot for the site.
 5. Serve a static React site from the published snapshot only.
@@ -40,33 +38,18 @@ Implications:
 - no direct site reads from `corpus/` or `outputs/`
 - `site_data/current/` is the site contract boundary
 
-### 2026-04-05 — validated local model profiles
+### 2026-04-07 — Codex Labeling Direction
 
-- Default operator model: `qwen3:14b`
-- Faster alternative: `gemma3:12b-it-q8_0`
-
-Observed local labeler comparison on `EPA-HQ-OAR-2020-0430`:
-
-- `gemma3:12b-it-q8_0`
-  - wall clock: about `25.2s`
-  - model time: about `23.1s`
-  - `4757` input tokens / `490` output tokens
-  - faster and cheaper
-  - slightly more likely to over-specify a label
-- `qwen3:14b --no-think`
-  - wall clock: about `126.4s`
-  - model time: about `124.3s`
-  - `5323` input tokens / `9867` output tokens
-  - slower and much chattier internally
-  - safer labeling baseline for this repo
+Codex is now the labeling and insight-generation agent.
 
 Decision:
 
-- keep `qwen3:14b` as the default local operator model
-- document `gemma3:12b-it-q8_0` as the faster alternative
-- centralize `/no_think` behavior through shared model profiles
+- do not use or reintroduce Ollama for the product workflow
+- prefer Codex-generated labels, summaries, and evidence explanations when the task benefits from synthesis
+- keep rule alignment and publishing artifact-first and reproducible
+- avoid over-fitting the product to purely deterministic text rankings when a grounded Codex pass can produce better analyst-facing language
 
-## Current repository shape
+## Current Repository Shape
 
 Core scripts:
 
@@ -75,12 +58,10 @@ Core scripts:
 - `dedup_comments.py`
 - `generate_change_cards.py`
 - `cluster_comments.py`
-- `label_clusters.py`
 - `generate_outputs.py`
-- `evaluate_pipeline.py`
 - `generate_insights.py`
+- `evaluate_pipeline.py`
 - `publish_site_snapshot.py`
-- `refresh_site_snapshot.py`
 - `prepare_gold_set_packet.py`
 - `validate_gold_set.py`
 
@@ -97,16 +78,16 @@ Key artifact boundaries:
 - `site_data/current/dockets/{docket_id}/insight_report.json`
 - `site_app/`
 
-## Latest local verification
+## Latest Local Verification
 
 V2 final verification refreshed on 2026-04-07:
 
 - V2 insight/publish/refresh pytest coverage passed:
   - `TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_generate_insights.py test_publish_site_snapshot.py test_refresh_site_snapshot.py -v`
 - backend/unit suite passed for the local pipeline and site publishing Python surface:
-  - `python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v`
-- frontend verification passed:
-  - `npm test`
+  - `python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_publish_site_snapshot.py test_docs_acceptance.py test_gold_set_workflow.py test_gold_set_consistency.py -v`
+- V2 frontend verification passed:
+  - `npm test -- --run src/App.test.tsx src/snapshot.test.ts`
   - `npm run build`
 - artifact verification passed:
   - parsed all published `report.json`, `eval_report.json`, `insight_report.json`, `dockets/index.json`, and `release_summary.json`
@@ -114,25 +95,27 @@ V2 final verification refreshed on 2026-04-07:
   - confirmed `release_summary.json` reports `"insights": {"available": 3, "not_available": 0}`
   - confirmed generated insight reports have zero banned causal-language violations
 - docs cleanup verification passed:
-  - `git diff --check -- PROJECT_STATUS.md`
-- full local refresh caveat:
-  - `python refresh_site_snapshot.py --model qwen3:14b` was attempted but could not reach Ollama at `http://localhost:11434`
-  - deterministic fallback completed with existing local `outputs/` artifacts: `python generate_insights.py` then `python publish_site_snapshot.py`
-- real local labeler smoke runs completed for:
-  - `qwen3:14b --no-think --force`
-  - `gemma3:12b-it-q8_0 --force`
-- real local refresh/publish path completed for:
-  - `refresh_site_snapshot.py --docket EPA-HQ-OAR-2020-0430 --model qwen3:14b --force-labels`
+  - `git diff --check`
+- frontend runtime/product issues resolved:
+  - Vitest hoisting fix in `App.test.tsx`
+  - selector fixes in `App.test.tsx`
+  - Vite snapshot-serving support in dev/build
+  - legacy published snapshot compatibility in the frontend loader
+  - V2 insight loading fallbacks
+  - home story launcher and evidence drilldown UI
+  - card priority/size sorting and lower-signal folding
 
-## Active focus
+## Active Focus
 
 - V2 implementation is complete for the current three-docket EPA scope.
 - Human-blind annotation is no longer a blocker. AI-blind gold sets remain the accepted V2 evaluation baseline.
-- The next useful pass is reviewer/product polish: inspect the insight wording, card drilldown ergonomics, and any Claude review feedback on the final handoff PR.
-- If the site shows stale or unavailable evaluation for any docket, start Ollama and rerun `refresh_site_snapshot.py --model qwen3:14b`; otherwise use `generate_insights.py` plus `publish_site_snapshot.py` for deterministic insight refreshes from existing reports.
+- The next product pass is V2.5: rework the React site so it comes across as a clean, modern analyst UI with stronger visual hierarchy and more polished docket/card presentation.
+- If the site shows stale or unavailable evaluation for any docket, rerun `evaluate_pipeline.py`, `generate_insights.py`, and `publish_site_snapshot.py` after committing the gold-set baseline.
 
-## Notes for the next pass
+## Notes For The Next Pass
 
-- Review and merge the final Phase 5 handoff PR.
-- Keep any future product changes small and evidence-first: no live browser inference, no remote model API dependency, and no causal claims in generated or user-facing insight text.
-- Consider a later polish pass for finding/card navigation, copy review, and visual hierarchy after using the site on the three published dockets.
+- Keep V2.5 frontend-only unless a specific product need requires new snapshot fields.
+- Preserve the local-first/static architecture: no backend service, no live inference, no direct site reads from `corpus/` or `outputs/`.
+- Keep Codex as the labeling and synthesis agent; do not route new product work through legacy local model entrypoints.
+- Treat V2.5 as UI modernization and polish, not a new model or data-pipeline phase.
+- Before handoff, run the focused frontend suite, build, docs acceptance test, and `git diff --check`.

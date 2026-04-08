@@ -6,6 +6,8 @@ V2 turns the current artifact substrate into an insight-first analyst system. Th
 
 AI-blind gold sets are accepted as the V2 evaluation baseline. Human-blind annotation is no longer a blocker.
 
+Status note, 2026-04-07: V2 phases are implemented locally. The next planned product pass is V2.5, a frontend UI modernization pass to make the static React site come across as a clean, modern analyst UI while preserving the local-first, read-only architecture.
+
 ## Product Goal
 
 Build a static, local-first rulemaking intelligence surface that lets a user quickly answer:
@@ -22,7 +24,7 @@ V2 must continue to avoid causal claims. It should say "related," "aligned," "ap
 ## Architecture
 
 - Keep the current artifact-first pipeline.
-- Keep all LLM work as local batch generation through Ollama.
+- Keep all LLM work as local batch generation through Codex.
 - Add an insight artifact layer between `outputs/` and `site_data/`.
 - Keep the React site static and read-only.
 - The site continues to read only from `site_data/current/`.
@@ -33,7 +35,7 @@ V2 must continue to avoid causal claims. It should say "related," "aligned," "ap
 - Add `generate_insights.py`.
   - Inputs: per-docket `report.json`, `eval_report.json`, and existing card/cluster evidence.
   - Output: `outputs/{docket_id}/insight_report.json`.
-  - Uses deterministic ranking first, then optional local Ollama synthesis.
+  - Uses grounded evidence selection plus Codex synthesis when possible.
   - Records model profile, prompt version, token totals, generation time, and source artifact paths.
 
 - Add `insight_report.json` v1.
@@ -46,7 +48,7 @@ V2 must continue to avoid causal claims. It should say "related," "aligned," "ap
 - Extend publishing.
   - Copy `insight_report.json` into `site_data/current/dockets/{docket_id}/`.
   - Add `insight_report_path` and insight availability to the docket index.
-  - Update `refresh_site_snapshot.py` flow to run labels, outputs, evaluation, insights, then publish.
+  - Update the publish flow to run Codex labeling handoff, outputs, evaluation, insights, then publish.
 
 - Upgrade the React site.
   - Home page becomes a docket story launcher, not just a snapshot index.
@@ -60,8 +62,8 @@ These phases are intentionally light scaffolding. Claude Code should do a deeper
 
 1. Insight Artifact MVP
    - Add `generate_insights.py` and `insight_report.json` v1.
-   - Start with deterministic ranking and grounded summaries from existing `report.json` and `eval_report.json`.
-   - Keep local Ollama synthesis optional or minimal in this phase.
+   - Start with grounded evidence selection and Codex-written summaries from existing `report.json` and `eval_report.json`.
+   - Use Codex synthesis where it improves analyst-facing language while preserving evidence traceability.
    - Add Python tests for schema shape, ranking behavior, missing evidence, provenance, and banned causal language.
 
 2. Publishing and Refresh Integration
@@ -114,7 +116,10 @@ These phases are intentionally light scaffolding. Claude Code should do a deeper
   - Run `npm run build`.
 
 - End-to-end:
-  - Run `python refresh_site_snapshot.py --model qwen3:14b --force-labels`.
+  - Run `python generate_outputs.py --force`.
+  - Run `python evaluate_pipeline.py`.
+  - Run `python generate_insights.py`.
+  - Run `python publish_site_snapshot.py`.
   - Confirm all three dockets publish `insight_report.json`.
   - Confirm each docket page starts with useful narrative insight and links to evidence.
   - Run `git diff --check`.
@@ -124,5 +129,6 @@ These phases are intentionally light scaffolding. Claude Code should do a deeper
 - AI-blind gold sets are sufficient for V2 evaluation.
 - V2 is an insight product, not a benchmark paper or public marketing site.
 - The current three-docket EPA scope remains the V2 scope.
-- Local Ollama remains the only supported LLM runtime.
+- Codex is the LLM runtime.
+- Ollama should not be used or reintroduced for product workflow labeling.
 - V2 succeeds when the site feels like a useful analyst system, not merely a viewer for pipeline artifacts.
