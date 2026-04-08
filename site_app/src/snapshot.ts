@@ -1,4 +1,4 @@
-import type { DocketIndex, DocketIndexEntry, EvalReport, Report, SnapshotManifest } from "./models";
+import type { DocketIndex, DocketIndexEntry, EvalReport, InsightReport, Report, SnapshotManifest } from "./models";
 
 const SNAPSHOT_BASE = (import.meta.env.VITE_SNAPSHOT_BASE as string | undefined) || "/site_data/current";
 
@@ -24,6 +24,8 @@ function normalizeIndexEntry(
 ): DocketIndexEntry {
   const evaluationStatus = typeof rawEntry.evaluation_status === "string" ? rawEntry.evaluation_status : "not_available";
   const rawLabeling = rawEntry.labeling && typeof rawEntry.labeling === "object" ? rawEntry.labeling : {};
+  const insightAvailable = typeof rawEntry.insight_available === "boolean" ? rawEntry.insight_available : false;
+  const insightReportPath = typeof rawEntry.insight_report_path === "string" ? rawEntry.insight_report_path : null;
 
   return {
     docket_id: typeof rawEntry.docket_id === "string" ? rawEntry.docket_id : "unknown-docket",
@@ -35,6 +37,9 @@ function normalizeIndexEntry(
           : "unknown-docket",
     report_path: typeof rawEntry.report_path === "string" ? rawEntry.report_path : "",
     eval_report_path: typeof rawEntry.eval_report_path === "string" ? rawEntry.eval_report_path : "",
+    insight_report_path: insightReportPath,
+    insight_available: insightAvailable,
+    insight_generated_at: typeof rawEntry.insight_generated_at === "string" ? rawEntry.insight_generated_at : null,
     latest_publish_at:
       typeof rawEntry.latest_publish_at === "string" ? rawEntry.latest_publish_at : fallbackPublishedAt,
     generated_at: typeof rawEntry.generated_at === "string" ? rawEntry.generated_at : undefined,
@@ -162,6 +167,17 @@ export async function loadReport(docketId: string): Promise<Report> {
 
 export async function loadEvalReport(docketId: string): Promise<EvalReport> {
   return fetchJson<EvalReport>(`dockets/${docketId}/eval_report.json`, `eval_report.json for ${docketId}`);
+}
+
+export async function loadInsightReport(docketId: string): Promise<InsightReport | null> {
+  try {
+    return await fetchJson<InsightReport>(
+      `dockets/${docketId}/insight_report.json`,
+      `insight_report.json for ${docketId}`
+    );
+  } catch {
+    return null;
+  }
 }
 
 export function summarizeMetricBlock(metricBlock: Record<string, unknown> | undefined): string[] {
