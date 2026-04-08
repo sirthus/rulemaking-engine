@@ -11,10 +11,13 @@ Last updated: 2026-04-07
 - Review/operator artifacts are written under `outputs/`.
 - Published site-safe JSON snapshots are written under `site_data/`.
 - A static React app now lives under `site_app/` and reads only from `site_data/current/`.
+- V2 is implemented through Phase 5: insight generation, publish/refresh integration, the React insight surface, card evidence drilldown, and final QA handoff.
+- `generate_insights.py` produces deterministic `insight_report.json` artifacts from existing docket reports and evaluation reports.
+- The React site surfaces docket-level insight summaries, ranked findings, priority cards, and card-level evidence drilldown while preserving V1 snapshot fallbacks.
 - Vite now serves the published snapshot in dev and copies it into `dist/` for production builds.
 - The frontend loader now tolerates earlier published V1 snapshot payloads as a compatibility shim.
 - `label_audit.json` remains retired in favor of `label_run.json`.
-- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the next product phase, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
+- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the insight-system roadmap, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
 
 ## Architecture decisions
 
@@ -75,6 +78,7 @@ Core scripts:
 - `label_clusters.py`
 - `generate_outputs.py`
 - `evaluate_pipeline.py`
+- `generate_insights.py`
 - `publish_site_snapshot.py`
 - `refresh_site_snapshot.py`
 - `prepare_gold_set_packet.py`
@@ -86,30 +90,34 @@ Key artifact boundaries:
 - `corpus/{docket_id}/label_run.json`
 - `outputs/{docket_id}/report.json`
 - `outputs/{docket_id}/eval_report.json`
+- `outputs/{docket_id}/insight_report.json`
 - `site_data/current/manifest.json`
 - `site_data/current/release_summary.json`
 - `site_data/current/dockets/index.json`
+- `site_data/current/dockets/{docket_id}/insight_report.json`
 - `site_app/`
 
 ## Latest local verification
 
-Python/docs verification refreshed on 2026-04-07:
+V2 final verification refreshed on 2026-04-07:
 
+- V2 insight/publish/refresh pytest coverage passed:
+  - `TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_generate_insights.py test_publish_site_snapshot.py test_refresh_site_snapshot.py -v`
 - backend/unit suite passed for the local pipeline and site publishing Python surface:
-  - `python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v`
-- docs cleanup verification passed:
-  - `git diff --check`
-
-Frontend verification last passed on 2026-04-05:
-
+  - `python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v`
 - frontend verification passed:
   - `npm test`
   - `npm run build`
-- frontend runtime issues resolved:
-  - Vitest hoisting fix in `App.test.tsx`
-  - selector fixes in `App.test.tsx`
-  - Vite snapshot-serving support in dev/build
-  - legacy published snapshot compatibility in the frontend loader
+- artifact verification passed:
+  - parsed all published `report.json`, `eval_report.json`, `insight_report.json`, `dockets/index.json`, and `release_summary.json`
+  - confirmed all three dockets have `insight_available: true`
+  - confirmed `release_summary.json` reports `"insights": {"available": 3, "not_available": 0}`
+  - confirmed generated insight reports have zero banned causal-language violations
+- docs cleanup verification passed:
+  - `git diff --check -- PROJECT_STATUS.md`
+- full local refresh caveat:
+  - `python refresh_site_snapshot.py --model qwen3:14b` was attempted but could not reach Ollama at `http://localhost:11434`
+  - deterministic fallback completed with existing local `outputs/` artifacts: `python generate_insights.py` then `python publish_site_snapshot.py`
 - real local labeler smoke runs completed for:
   - `qwen3:14b --no-think --force`
   - `gemma3:12b-it-q8_0 --force`
@@ -118,13 +126,13 @@ Frontend verification last passed on 2026-04-05:
 
 ## Active focus
 
-- Human-blind annotation is no longer a blocker for V2. AI-blind gold sets are accepted as the V2 evaluation baseline.
-- The next product gap is insight quality: the current site is mostly an artifact viewer, while V2 should surface rulemaking narratives, ranked findings, and evidence-backed explanations.
-- If the site shows stale or unavailable evaluation for any docket, rerun `evaluate_pipeline.py` or `refresh_site_snapshot.py --model qwen3:14b` after committing the gold-set baseline.
+- V2 implementation is complete for the current three-docket EPA scope.
+- Human-blind annotation is no longer a blocker. AI-blind gold sets remain the accepted V2 evaluation baseline.
+- The next useful pass is reviewer/product polish: inspect the insight wording, card drilldown ergonomics, and any Claude review feedback on the final handoff PR.
+- If the site shows stale or unavailable evaluation for any docket, start Ollama and rerun `refresh_site_snapshot.py --model qwen3:14b`; otherwise use `generate_insights.py` plus `publish_site_snapshot.py` for deterministic insight refreshes from existing reports.
 
-## Notes for the next implementation pass
+## Notes for the next pass
 
-- Commit the AI-blind gold-set baseline and the consistency test.
-- Rerun `evaluate_pipeline.py` or `refresh_site_snapshot.py --model qwen3:14b` after gold-set updates.
-- Verify the React site against the refreshed multi-docket snapshot.
-- Start V2 from `V2_BLUEPRINT.md`: add an insight artifact layer, publish it into `site_data/current/`, and upgrade the React site from artifact viewer to insight surface.
+- Review and merge the final Phase 5 handoff PR.
+- Keep any future product changes small and evidence-first: no live browser inference, no remote model API dependency, and no causal claims in generated or user-facing insight text.
+- Consider a later polish pass for finding/card navigation, copy review, and visual hierarchy after using the site on the three published dockets.
