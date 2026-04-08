@@ -121,7 +121,7 @@ def run_refresh(
                     "priority_card_count": len(insight_report.get("priority_cards", [])),
                 }
             except Exception as exc:
-                print(f"[{docket_id}] WARN: insight generation failed: {exc}")
+                print(f"[{docket_id}] INSIGHT_ERROR: insight generation failed: {exc}")
                 insight_summaries[docket_id] = None
 
     published_manifest = None

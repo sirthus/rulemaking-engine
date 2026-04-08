@@ -279,6 +279,10 @@ def build_top_findings(clusters: list[dict], cards: list[dict]) -> list[dict]:
                     "These changes had measurable comment engagement but no cluster grouping."
                 ),
                 "evidence_note": "",
+                "evidence_card_id": None,
+                "evidence_section_title": None,
+                "evidence_card_score": None,
+                "evidence_cluster_comment_count": None,
                 "card_ids": card_ids,
                 "cluster_ids": [],
             }
@@ -418,7 +422,7 @@ def build_executive_summary(
 def sanitize_causal_language(value: str) -> str:
     def replace(match: re.Match) -> str:
         normalized = re.sub(r"\s+", " ", match.group(0).lower())
-        return BANNED_CAUSAL_REPLACEMENTS[normalized]
+        return BANNED_CAUSAL_REPLACEMENTS.get(normalized, match.group(0))
 
     return BANNED_CAUSAL_PATTERN.sub(replace, value)
 

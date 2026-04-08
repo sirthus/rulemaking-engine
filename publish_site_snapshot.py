@@ -40,7 +40,7 @@ def atomic_write_text(path: str, text: str) -> None:
 
 
 def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2))
+    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
 
 
 def print_line(prefix: str, message: str) -> None:

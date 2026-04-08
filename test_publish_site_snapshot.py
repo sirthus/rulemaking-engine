@@ -137,6 +137,8 @@ class PublishSiteSnapshotTests(unittest.TestCase):
 
         current_insight_path = os.path.join(current_dir, "dockets", docket_id, "insight_report.json")
         self.assertTrue(os.path.exists(current_insight_path))
+        with open(current_insight_path, "rb") as handle:
+            self.assertTrue(handle.read().endswith(b"\n"))
 
         with open(current_index_path, "r", encoding="utf-8") as handle:
             docket_index = json.load(handle)

@@ -6,8 +6,8 @@ Traceable rule-evolution analysis plus cautious comment-theme alignment for publ
 
 This repository is an artifact-first local product:
 
-- deterministic stages build corpus artifacts under `corpus/`
-- local Ollama batches add cluster labels
+- local corpus stages build artifacts under `corpus/`
+- Codex runs cluster labeling and insight generation
 - review artifacts are written under `outputs/`
 - published site-safe JSON snapshots are written under `site_data/`
 - a static React app under `site_app/` reads only from `site_data/current/`
@@ -16,16 +16,20 @@ There is no live model API in the product path, and the site never invokes a mod
 
 ## Current Status
 
-The V1 substrate is implemented for the locked three-docket EPA starter set:
+The V2 insight-first analyst surface is implemented for the locked three-docket EPA starter set:
 
 - `EPA-HQ-OAR-2020-0272`
 - `EPA-HQ-OAR-2018-0225`
 - `EPA-HQ-OAR-2020-0430`
 
-The V1 substrate includes:
+The current product includes:
 
-- a static React snapshot viewer
-- shared Ollama model profiles and preflight checks
+- a static read-only React insight and review surface
+- `generate_insights.py` and per-docket `insight_report.json`
+- published insight reports under `site_data/current/`
+- a home docket story launcher
+- docket-level summaries, top findings, and card detail evidence drilldown
+- analyst-first card sorting, proposed/final diffs, and lower-signal card folding
 - a richer published snapshot contract with `release_summary.json`
 - blind gold-set packet generation and validation tooling
 - Vite dev/build support for serving and packaging the published snapshot
@@ -42,11 +46,6 @@ Frontend/runtime:
 
 - `node`
 - `npm`
-
-Local LLM/runtime:
-
-- `ollama`
-- at least one pulled local model
 
 API access:
 
@@ -66,9 +65,9 @@ export REGULATIONS_GOV_API_KEY=your_key_here
 
 Federal Register does not require an API key. Regulations.gov does.
 
-## Deterministic Pipeline
+## Local Corpus Pipeline
 
-Run the deterministic stages:
+Run the corpus-building stages:
 
 ```bash
 python fetch_corpus.py
@@ -78,43 +77,25 @@ python generate_change_cards.py
 python cluster_comments.py
 ```
 
-## Local Ollama Workflow
+## Codex Labeling and Publish Refresh
 
-Cluster labeling is local-only. Start Ollama and pull one of the supported profiles:
+Codex is the labeling and insight-generation agent. Do not use Ollama as a product workflow dependency.
 
-```bash
-ollama serve
-ollama pull qwen3:14b
-ollama pull gemma3:12b-it-q8_0
-```
-
-Validated local profiles:
-
-- accuracy-first default: `qwen3:14b`
-- speed-first alternative: `gemma3:12b-it-q8_0`
-
-Run labeling directly:
+After Codex updates labels or insight text, regenerate and publish the downstream artifacts:
 
 ```bash
-python label_clusters.py --model qwen3:14b --no-think
+python generate_outputs.py --force
+python evaluate_pipeline.py
+python generate_insights.py
+python publish_site_snapshot.py
 ```
 
-Or refresh the whole post-clustering path:
+That post-label refresh flow:
 
-```bash
-python refresh_site_snapshot.py --model qwen3:14b
-```
-
-That refresh command is the normal V1 operator entrypoint. It now:
-
-1. runs Ollama preflight and validates the requested model
-2. resolves the supported model profile and `no_think` behavior
-3. labels clusters locally
-4. regenerates `report.json`, `report.csv`, and `report.html`
-5. regenerates `eval_report.json`
-6. publishes a new immutable snapshot release plus `site_data/current/`
-
-For `qwen3:14b`, `refresh_site_snapshot.py` applies the recommended `no_think` behavior automatically through the shared model profile. You do not need to pass an extra flag there.
+1. regenerates `report.json`, `report.csv`, and `report.html`
+2. regenerates `eval_report.json`
+3. regenerates `insight_report.json`
+4. publishes a new immutable snapshot release plus `site_data/current/`
 
 ## Outputs vs Published Site Data
 
@@ -131,12 +112,13 @@ Published snapshot contract:
 - `site_data/current/dockets/index.json`
 - `site_data/current/dockets/{docket_id}/report.json`
 - `site_data/current/dockets/{docket_id}/eval_report.json`
+- `site_data/current/dockets/{docket_id}/insight_report.json`
 
 `report.csv`, `report.html`, raw corpus files, and operator-only manifests are intentionally excluded from the site contract.
 
 ## Static React Site
 
-The first site lives under `site_app/`. It is a client-only React app with:
+The site lives under `site_app/`. It is a client-only V2 insight surface with:
 
 - no backend
 - no SSR requirement
@@ -146,7 +128,7 @@ The first site lives under `site_app/`. It is a client-only React app with:
 The site expects a published snapshot to exist first:
 
 ```bash
-python refresh_site_snapshot.py --model qwen3:14b
+python publish_site_snapshot.py
 ```
 
 Then use the frontend workspace:
@@ -173,14 +155,14 @@ Local serving behavior:
 
 The frontend loader now tolerates both:
 
-- the current V1 snapshot shape
+- the current V2 snapshot shape
 - the earlier published snapshot shape from before the richer docket index fields existed
 
-That compatibility is only a safety net. The recommended path is still to regenerate the snapshot with `refresh_site_snapshot.py` so the site gets the latest V1 metadata.
+That compatibility is only a safety net. The recommended path is still to regenerate the downstream artifacts after Codex labeling, then publish the snapshot so the site gets the latest V2 metadata and insight reports.
 
 ## Blind Evaluation Workflow
 
-The V1 workflow makes blind gold-set mechanics a first-class repo workflow.
+The workflow makes blind gold-set mechanics a first-class repo workflow.
 
 Generate a blinded packet and editable template from the current published snapshot:
 
@@ -212,7 +194,7 @@ If a docket lacks a committed gold set, evaluation writes an `eval_report.json` 
 Backend verification:
 
 ```bash
-python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_label_clusters.py test_publish_site_snapshot.py test_refresh_site_snapshot.py test_docs_acceptance.py test_ollama_runtime.py test_gold_set_workflow.py test_gold_set_consistency.py -v
+python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_publish_site_snapshot.py test_docs_acceptance.py test_gold_set_workflow.py test_gold_set_consistency.py -v
 ```
 
 Frontend verification:
@@ -248,12 +230,12 @@ The active handoff docs are tracked in Git so another machine can pull the repo 
 
 - `PROJECT_STATUS.md`: current state, accepted architecture decisions, verification notes, and next tasks
 - `BLUEPRINT.md`: V1 substrate blueprint and implementation history
-- `V2_BLUEPRINT.md`: next product phase blueprint for the insight system
+- `V2_BLUEPRINT.md`: implemented V2 insight-system blueprint and V2.5 direction note
 - `README.md`: quickstart and operator workflow
 - `CLAUDE.md`: Claude Code coordination and guardrails
 
-If a fresh checkout is unclear, read `PROJECT_STATUS.md` first, then `V2_BLUEPRINT.md` for the next product direction.
+If a fresh checkout is unclear, read `PROJECT_STATUS.md` first. It is the canonical brief handoff and currently points next to V2.5 UI polish.
 
 ## Roadmap
 
-See `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the insight-system roadmap.
+V2 is implemented. The next product pass is V2.5: rework the React site so it comes across as a clean, modern analyst UI while preserving the static local-first architecture. See `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the V2 insight-system roadmap.
