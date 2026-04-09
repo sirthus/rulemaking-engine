@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { assertSchemaVersion, loadDocketIndex, loadInsightReport, loadManifest } from "./snapshot";
+import {
+  assertSchemaVersion,
+  loadDocketIndex,
+  loadInsightReport,
+  loadManifest,
+  loadReleaseSummary,
+} from "./snapshot";
 
 describe("snapshot schema guard", () => {
   it("accepts v1 payloads", () => {
@@ -136,6 +142,33 @@ describe("snapshot schema guard", () => {
     const result = await loadInsightReport("EPA-HQ-OAR-2020-0430");
 
     expect(result).toBeNull();
+    fetchMock.mockRestore();
+  });
+
+  it("loadReleaseSummary returns parsed release summary", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        schema_version: "v1",
+        release_id: "20260408T120000Z",
+        published_at: "2026-04-08T12:00:00+00:00",
+        docket_count: 3,
+        docket_ids: ["EPA-HQ-OAR-2018-0225", "EPA-HQ-OAR-2020-0272", "EPA-HQ-OAR-2020-0430"],
+        evaluation: { available: 2, not_available: 1 },
+        insights: { available: 3, not_available: 0 },
+        labeling: {
+          models: ["qwen3:14b"],
+          total_input_tokens: 1200,
+          total_output_tokens: 340,
+        },
+      }),
+    } as Response);
+
+    const summary = await loadReleaseSummary();
+
+    expect(summary.evaluation.available).toBe(2);
+    expect(summary.insights.available).toBe(3);
+    expect(summary.labeling.models).toEqual(["qwen3:14b"]);
     fetchMock.mockRestore();
   });
 });

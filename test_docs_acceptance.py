@@ -5,10 +5,8 @@ import unittest
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CHECK_PATHS = [
     "README.md",
-    "BLUEPRINT.md",
     "CLAUDE.md",
     "PROJECT_STATUS.md",
-    "V2_BLUEPRINT.md",
     "label_clusters.py",
     "generate_outputs.py",
     "evaluate_pipeline.py",

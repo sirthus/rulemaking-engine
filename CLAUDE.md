@@ -6,11 +6,11 @@ This file provides guidance to Claude Code when working in this repository.
 
 This project uses `PROJECT_STATUS.md` as the tracked handoff between Claude Code and Codex. Read it before starting work. It records the current implementation state, accepted architecture decisions, active focus, and the next recommended task.
 
-Use `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the implemented V2 insight plan. The old phase spec files have been retired. `PROJECT_STATUS.md` is the current source of truth for the next pass.
+The old blueprint and phase spec files are retired. `PROJECT_STATUS.md` is the current source of truth for the next pass, with `README.md` covering quickstart/operator workflow.
 
 ## Current implementation state
 
-As of 2026-04-07, the V2 insight system is implemented locally. The operating architecture is now:
+As of 2026-04-08, the V2 insight system and UI overhaul are implemented locally. The operating architecture is now:
 
 - local pipeline stages build corpus artifacts
 - cluster labeling runs via Codex
@@ -19,7 +19,7 @@ As of 2026-04-07, the V2 insight system is implemented locally. The operating ar
 - a static read-only V2 insight surface under `site_app/` reads only from `site_data/current/`
 - Vite serves the published snapshot in local dev and copies it into production builds
 - there is no live model API in the product runtime path
-- the next planned product pass is V2.5 UI polish: make the React site feel like a clean, modern analyst UI without changing the local-first architecture
+- the next planned work is refactor, performance, and a Showpiece README pass without changing the local-first architecture
 
 ## LLM runtime
 

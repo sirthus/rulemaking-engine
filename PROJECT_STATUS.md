@@ -1,6 +1,6 @@
 # Project Status
 
-Last updated: 2026-04-07
+Last updated: 2026-04-08
 
 ## Current Implementation State
 
@@ -12,10 +12,11 @@ Last updated: 2026-04-07
 - Published site-safe JSON snapshots are written under `site_data/`.
 - A static read-only React insight surface lives under `site_app/` and reads only from `site_data/current/`.
 - The site has a docket story launcher, insight summaries, top findings, evidence drilldown, proposed/final diffs, analyst-first card sorting, and lower-signal card folding.
+- The UI overhaul pass is complete across the home, overview, priority changes, comment themes, and card detail surfaces.
 - Vite serves the published snapshot in dev and copies it into `dist/` for production builds.
 - The frontend loader tolerates earlier published V1 snapshot payloads as a compatibility shim.
 - `label_audit.json` remains retired in favor of `label_run.json`.
-- `PROJECT_STATUS.md`, `BLUEPRINT.md` for V1, `V2_BLUEPRINT.md` for the V2 implementation plan, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
+- `PROJECT_STATUS.md`, `README.md`, and `CLAUDE.md` are the active tracked handoff docs.
 
 ## Architecture Decisions
 
@@ -80,7 +81,7 @@ Key artifact boundaries:
 
 ## Latest Local Verification
 
-V2 final verification refreshed on 2026-04-07:
+UI overhaul verification refreshed on 2026-04-08:
 
 - V2 insight/publish/refresh pytest coverage passed:
   - `TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_generate_insights.py test_publish_site_snapshot.py test_refresh_site_snapshot.py -v`
@@ -108,14 +109,21 @@ V2 final verification refreshed on 2026-04-07:
 ## Active Focus
 
 - V2 implementation is complete for the current three-docket EPA scope.
+- The UI overhaul pass is complete for the current static React analyst surface.
 - Human-blind annotation is no longer a blocker. AI-blind gold sets remain the accepted V2 evaluation baseline.
-- The next product pass is V2.5: rework the React site so it comes across as a clean, modern analyst UI with stronger visual hierarchy and more polished docket/card presentation.
+- The next work block is:
+  1. refactor
+  2. performance
+  3. Showpiece README
 - If the site shows stale or unavailable evaluation for any docket, rerun `evaluate_pipeline.py`, `generate_insights.py`, and `publish_site_snapshot.py` after committing the gold-set baseline.
 
 ## Notes For The Next Pass
 
-- Keep V2.5 frontend-only unless a specific product need requires new snapshot fields.
+- Treat the UI overhaul as complete. The next pass should optimize and clean up the shipped surface rather than reopen product-direction specs.
 - Preserve the local-first/static architecture: no backend service, no live inference, no direct site reads from `corpus/` or `outputs/`.
 - Keep Codex as the labeling and synthesis agent; do not route new product work through legacy local model entrypoints.
-- Treat V2.5 as UI modernization and polish, not a new model or data-pipeline phase.
+- Prioritize:
+  1. refactoring the frontend and surrounding code into a cleaner long-lived shape
+  2. improving runtime/build performance where analyst workflows benefit
+  3. rewriting the top-level README into a stronger Showpiece README
 - Before handoff, run the focused frontend suite, build, docs acceptance test, and `git diff --check`.
