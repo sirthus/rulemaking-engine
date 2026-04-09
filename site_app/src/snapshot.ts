@@ -1,4 +1,12 @@
-import type { DocketIndex, DocketIndexEntry, EvalReport, InsightReport, Report, SnapshotManifest } from "./models";
+import type {
+  DocketIndex,
+  DocketIndexEntry,
+  EvalReport,
+  InsightReport,
+  ReleaseSummary,
+  Report,
+  SnapshotManifest,
+} from "./models";
 
 const SNAPSHOT_BASE = (import.meta.env.VITE_SNAPSHOT_BASE as string | undefined) || "/site_data/current";
 
@@ -159,6 +167,10 @@ export async function loadManifest(): Promise<SnapshotManifest> {
 export async function loadDocketIndex(): Promise<DocketIndex> {
   const payload = await fetchJson<Record<string, unknown>>("dockets/index.json", "dockets/index.json");
   return normalizeDocketIndex(payload);
+}
+
+export async function loadReleaseSummary(): Promise<ReleaseSummary> {
+  return fetchJson<ReleaseSummary>("release_summary.json", "release_summary.json");
 }
 
 export async function loadReport(docketId: string): Promise<Report> {

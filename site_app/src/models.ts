@@ -54,6 +54,17 @@ export interface DocketIndex {
   dockets: DocketIndexEntry[];
 }
 
+export interface ReleaseSummary {
+  schema_version: "v1";
+  release_id: string;
+  published_at: string;
+  docket_count: number;
+  docket_ids: string[];
+  evaluation: { available: number; not_available: number };
+  insights: { available: number; not_available: number };
+  labeling: { models: string[]; total_input_tokens: number; total_output_tokens: number };
+}
+
 export interface ClusterSummary {
   cluster_id: string;
   label?: string | null;

@@ -1,20 +1,31 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { Link, Navigate, Route, Routes, useParams, useSearchParams } from "react-router-dom";
+import { AppChrome } from "./components/AppChrome";
+import { Breadcrumb } from "./components/Breadcrumb";
 import {
-  Link,
-  Navigate,
-  Route,
-  Routes,
-  useParams,
-  useSearchParams,
-} from "react-router-dom";
+  type CardSort,
+  cardDisplayMetrics,
+  changeTypeLabel,
+  compareCardsByDisplayMetrics,
+  isPrimaryCard,
+  priorityChipClass,
+  sizeChipClass,
+} from "./components/ChangeCardRow";
+import { ChangeDetailPane } from "./components/ChangeDetailPane";
+import { ChangeListRow } from "./components/ChangeListRow";
+import { CardInsightPanel, getCardInsightContext, preambleLinkKey } from "./components/CardInsightPanel";
+import { ErrorView } from "./components/ErrorView";
+import { FilterBar } from "./components/FilterBar";
+import { FindingEvidenceLine } from "./components/FindingEvidenceLine";
+import { cardChangeSynopsis, InlineDiff } from "./components/InlineDiff";
+import { InsightLoadingPanel, LoadingView } from "./components/LoadingView";
+import { ThemeRow, type ThemeSignalBreakdown } from "./components/ThemeCard";
 import type {
-  ChangeCard,
+  ClusterSummary,
   DocketIndex,
   EvalReport,
-  InsightFinding,
-  InsightPriorityCard,
   InsightReport,
-  PreambleLink,
+  ReleaseSummary,
   Report,
   SnapshotManifest,
 } from "./models";
@@ -23,6 +34,7 @@ import {
   loadEvalReport,
   loadInsightReport,
   loadManifest,
+  loadReleaseSummary,
   loadReport,
   summarizeMetricBlock,
 } from "./snapshot";
@@ -32,38 +44,11 @@ type LoadState<T> =
   | { status: "error"; error: string }
   | { status: "ready"; data: T };
 
-const LINKED_FINDING_LIMIT = 5;
-const ALIGNMENT_LEVEL_RANK: Record<string, number> = {
-  high: 3,
-  medium: 2,
-  low: 1,
-  none: 0,
-};
-
 const DOCKET_STORY_TITLES: Record<string, string> = {
   "EPA-HQ-OAR-2018-0225": "Good Neighbor Obligations for the 2008 Ozone NAAQS",
   "EPA-HQ-OAR-2020-0272": "Revised CSAPR Update for the 2008 Ozone NAAQS",
   "EPA-HQ-OAR-2020-0430": "Primary Copper Smelting NESHAP Reviews",
 };
-
-type CardSort = "priority" | "size";
-
-interface CardInsightContext {
-  priorityCard: InsightPriorityCard | null;
-  linkedFindings: InsightFinding[];
-  hasStalePriorityFindings: boolean;
-}
-
-interface CardDisplayMetrics {
-  linkedComments: number;
-  preambleLinks: number;
-  priorityRank: number;
-  priorityLabel: string;
-  sizeRank: number;
-  sizeLabel: string;
-  changedTokens: number;
-  isDocketProcess: boolean;
-}
 
 function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[]): LoadState<T> {
   const [state, setState] = useState<LoadState<T>>({ status: "loading" });
@@ -82,6 +67,7 @@ function useAsyncData<T>(loader: () => Promise<T>, deps: unknown[]): LoadState<T
           setState({ status: "error", error: error instanceof Error ? error.message : String(error) });
         }
       });
+
     return () => {
       cancelled = true;
     };
@@ -133,369 +119,82 @@ function formatStamp(value?: string): string {
   return parsed.toLocaleString();
 }
 
-function linkedCommentCount(card: ChangeCard): number {
-  const featureCount = card.alignment_signal?.features?.comment_count;
-  if (typeof featureCount === "number" && Number.isFinite(featureCount)) {
-    return featureCount;
-  }
-
-  return (card.related_clusters || []).reduce((sum, cluster) => {
-    const count = cluster.comment_count;
-    return typeof count === "number" && Number.isFinite(count) ? sum + count : sum;
-  }, 0);
-}
-
-function alignmentScore(card: ChangeCard): number {
-  const score = card.alignment_signal?.score;
-  return typeof score === "number" && Number.isFinite(score) ? score : 0;
-}
-
-function alignmentLevelRank(card: ChangeCard): number {
-  return ALIGNMENT_LEVEL_RANK[card.alignment_signal?.level || "none"] ?? 0;
-}
-
-function preambleLinkCount(card: ChangeCard): number {
-  return (card.preamble_links || []).length;
-}
-
-function changedTokenCount(card: ChangeCard): number {
-  const proposed = card.proposed_text_snippet || "";
-  const final = card.final_text_snippet || "";
-  const changeType = (card.change_type || "").toLowerCase();
-
-  if (changeType === "added") {
-    return tokenizeSnippet(final).length;
-  }
-  if (changeType === "removed") {
-    return tokenizeSnippet(proposed).length;
-  }
-
-  const diff = diffSnippets(proposed, final);
-  return (
-    diff.proposed.filter((piece) => piece.kind === "removed").length +
-    diff.final.filter((piece) => piece.kind === "added").length
-  );
-}
-
-function isDocketProcessCard(card: ChangeCard): boolean {
-  const headings = [card.final_heading, card.proposed_heading]
-    .filter((value): value is string => Boolean(value))
-    .map((value) => value.trim().toLowerCase());
-  const bodyText = [card.proposed_text_snippet, card.final_text_snippet]
-    .filter((value): value is string => Boolean(value))
-    .join(" ")
-    .toLowerCase();
-  const searchableText = [...headings, bodyText].join(" ");
-
-  const hasProcessHeading = headings.some((heading) => {
-    const normalized = heading.replace(/\s+/g, " ");
-    return (
-      normalized.startsWith("addresses:") ||
-      normalized === "addresses" ||
-      normalized.startsWith("dates:") ||
-      normalized === "dates" ||
-      normalized.includes("written comments") ||
-      normalized.includes("participation in virtual public hearing")
-    );
-  });
-
-  return (
-    hasProcessHeading ||
-    searchableText.includes("submit your comments") ||
-    searchableText.includes("regulations.gov") ||
-    searchableText.includes("public hearing")
-  );
-}
-
-function cardDisplayMetrics(card: ChangeCard): CardDisplayMetrics {
-  const linkedComments = linkedCommentCount(card);
-  const preambleLinks = preambleLinkCount(card);
-  const alignmentRank = alignmentLevelRank(card);
-  const changedTokens = changedTokenCount(card);
-  const changeType = (card.change_type || "").toLowerCase();
-  const isOneSidedChange = changeType === "added" || changeType === "removed";
-  const isDocketProcess = isDocketProcessCard(card);
-  let priorityRank = 1;
-  let priorityLabel = linkedComments === 0 && preambleLinks === 0 ? "No comment signal" : "Low priority";
-
-  if (isDocketProcess) {
-    priorityRank = 0;
-    priorityLabel = "Docket process";
-  } else if (linkedComments >= 10 || (linkedComments > 0 && alignmentRank >= ALIGNMENT_LEVEL_RANK.high)) {
-    priorityRank = 3;
-    priorityLabel = "High priority";
-  } else if (linkedComments > 0 || preambleLinks > 0) {
-    priorityRank = 2;
-    priorityLabel = "Medium priority";
-  }
-
-  let sizeRank = 1;
-  let sizeLabel = "Minor change";
-  if (changedTokens >= 20 || (isOneSidedChange && changedTokens >= 20)) {
-    sizeRank = 3;
-    sizeLabel = "Large change";
-  } else if (changedTokens >= 6 || (isOneSidedChange && changedTokens >= 5)) {
-    sizeRank = 2;
-    sizeLabel = "Moderate change";
-  }
-
-  return {
-    linkedComments,
-    preambleLinks,
-    priorityRank,
-    priorityLabel,
-    sizeRank,
-    sizeLabel,
-    changedTokens,
-    isDocketProcess,
-  };
-}
-
-function isPrimaryCard(metrics: CardDisplayMetrics): boolean {
-  return !metrics.isDocketProcess && metrics.priorityRank >= 2;
-}
-
 function normalizeCardSort(value: string | null): CardSort {
   return value === "size" ? "size" : "priority";
-}
-
-function compareCardsByDisplayMetrics(
-  a: ChangeCard,
-  b: ChangeCard,
-  aMetrics: CardDisplayMetrics,
-  bMetrics: CardDisplayMetrics,
-  sort: CardSort
-): number {
-  const processOrder = Number(aMetrics.isDocketProcess) - Number(bMetrics.isDocketProcess);
-  if (processOrder !== 0) {
-    return processOrder;
-  }
-
-  const primary =
-    sort === "size"
-      ? bMetrics.sizeRank - aMetrics.sizeRank || bMetrics.priorityRank - aMetrics.priorityRank
-      : bMetrics.priorityRank - aMetrics.priorityRank || bMetrics.sizeRank - aMetrics.sizeRank;
-
-  return (
-    primary ||
-    bMetrics.linkedComments - aMetrics.linkedComments ||
-    bMetrics.changedTokens - aMetrics.changedTokens ||
-    alignmentScore(b) - alignmentScore(a) ||
-    a.card_id.localeCompare(b.card_id)
-  );
-}
-
-function priorityChipClass(metrics: CardDisplayMetrics): string {
-  if (metrics.isDocketProcess) {
-    return "chip-priority-process";
-  }
-  if (metrics.priorityRank >= 3) {
-    return "chip-priority-high";
-  }
-  if (metrics.priorityRank >= 2) {
-    return "chip-priority-medium";
-  }
-  return "chip-priority-low";
-}
-
-function sizeChipClass(metrics: CardDisplayMetrics): string {
-  if (metrics.sizeRank >= 3) {
-    return "chip-size-large";
-  }
-  if (metrics.sizeRank >= 2) {
-    return "chip-size-moderate";
-  }
-  return "chip-size-minor";
 }
 
 function docketStoryTitle(docketId: string, fallback?: string): string {
   return DOCKET_STORY_TITLES[docketId] || fallback || docketId;
 }
 
-function findingEvidenceLine(finding: InsightFinding): string | null {
-  const hasStructuredEvidence =
-    Boolean(finding.evidence_section_title) ||
-    Boolean(finding.evidence_card_id) ||
-    typeof finding.evidence_cluster_comment_count === "number";
-
-  if (hasStructuredEvidence) {
-    const linkedChange = finding.evidence_section_title || finding.evidence_card_id || "linked change card";
-    const parts = [`Top linked change: ${linkedChange}`];
-    if (typeof finding.evidence_cluster_comment_count === "number") {
-      const count = finding.evidence_cluster_comment_count;
-      parts.push(`${count} theme comment${count === 1 ? "" : "s"} linked`);
-    }
-    return parts.join("; ");
-  }
-
-  return finding.evidence_note || null;
+function clusterSearchText(cluster: Pick<ClusterSummary, "label" | "label_description" | "top_keywords">): string {
+  return [cluster.label || "", cluster.label_description || "", ...(cluster.top_keywords || [])].join(" ").toLowerCase();
 }
 
-interface DiffPiece {
-  text: string;
-  kind: "unchanged" | "added" | "removed";
+function docketTabLabel(tab: string): string {
+  if (tab === "overview") {
+    return "Overview";
+  }
+  if (tab === "themes") {
+    return "Comment Themes";
+  }
+  return "Priority Changes";
 }
 
-function tokenizeSnippet(text: string): string[] {
-  return text.match(/\S+\s*/g) || [];
-}
-
-function diffSnippets(proposed: string, final: string): { proposed: DiffPiece[]; final: DiffPiece[] } {
-  const proposedTokens = tokenizeSnippet(proposed);
-  const finalTokens = tokenizeSnippet(final);
-  const table = Array.from({ length: proposedTokens.length + 1 }, () =>
-    Array.from({ length: finalTokens.length + 1 }, () => 0)
-  );
-
-  for (let i = proposedTokens.length - 1; i >= 0; i -= 1) {
-    for (let j = finalTokens.length - 1; j >= 0; j -= 1) {
-      table[i][j] =
-        proposedTokens[i].trim() === finalTokens[j].trim()
-          ? table[i + 1][j + 1] + 1
-          : Math.max(table[i + 1][j], table[i][j + 1]);
-    }
+function PriorityDistBar({ commentLinked, total }: { commentLinked: number; total: number }) {
+  if (total === 0) {
+    return null;
   }
 
-  const proposedPieces: DiffPiece[] = [];
-  const finalPieces: DiffPiece[] = [];
-  let i = 0;
-  let j = 0;
+  const unlinked = Math.max(total - commentLinked, 0);
+  const linkedPct = Math.round((commentLinked / total) * 100);
 
-  while (i < proposedTokens.length && j < finalTokens.length) {
-    if (proposedTokens[i].trim() === finalTokens[j].trim()) {
-      proposedPieces.push({ text: proposedTokens[i], kind: "unchanged" });
-      finalPieces.push({ text: finalTokens[j], kind: "unchanged" });
-      i += 1;
-      j += 1;
-    } else if (table[i + 1][j] >= table[i][j + 1]) {
-      proposedPieces.push({ text: proposedTokens[i], kind: "removed" });
-      i += 1;
-    } else {
-      finalPieces.push({ text: finalTokens[j], kind: "added" });
-      j += 1;
-    }
-  }
-
-  while (i < proposedTokens.length) {
-    proposedPieces.push({ text: proposedTokens[i], kind: "removed" });
-    i += 1;
-  }
-  while (j < finalTokens.length) {
-    finalPieces.push({ text: finalTokens[j], kind: "added" });
-    j += 1;
-  }
-
-  return { proposed: proposedPieces, final: finalPieces };
-}
-
-function renderDiffPieces(pieces: DiffPiece[]): ReactNode {
-  return pieces.map((piece, index) => {
-    if (piece.kind === "added") {
-      return (
-        <ins key={`${piece.kind}-${index}`} className="diff-added">
-          {piece.text}
-        </ins>
-      );
-    }
-    if (piece.kind === "removed") {
-      return (
-        <del key={`${piece.kind}-${index}`} className="diff-removed">
-          {piece.text}
-        </del>
-      );
-    }
-    return <span key={`${piece.kind}-${index}`}>{piece.text}</span>;
-  });
-}
-
-function ChangeSnippet({
-  card,
-  side,
-  preview = false,
-}: {
-  card: ChangeCard;
-  side: "proposed" | "final";
-  preview?: boolean;
-}) {
-  const proposed = card.proposed_text_snippet || "";
-  const final = card.final_text_snippet || "";
-  const changeType = (card.change_type || "").toLowerCase();
-  const className = `diff-text${preview ? " snippet-preview" : ""}`;
-
-  if (changeType === "added" && side === "proposed" && !proposed.trim()) {
-    return <p className="meta-line">No proposed text in this card</p>;
-  }
-  if (changeType === "removed" && side === "final" && !final.trim()) {
-    return <p className="meta-line">No final text in this card</p>;
-  }
-  if (side === "proposed" && !proposed.trim()) {
-    return <p className="meta-line">n/a</p>;
-  }
-  if (side === "final" && !final.trim()) {
-    return <p className="meta-line">n/a</p>;
-  }
-
-  if (changeType === "added" && side === "final") {
-    const addedPieces: DiffPiece[] = tokenizeSnippet(final).map((text) => ({ text, kind: "added" }));
-    return <p className={className}>{renderDiffPieces(addedPieces)}</p>;
-  }
-  if (changeType === "removed" && side === "proposed") {
-    const removedPieces: DiffPiece[] = tokenizeSnippet(proposed).map((text) => ({ text, kind: "removed" }));
-    return <p className={className}>{renderDiffPieces(removedPieces)}</p>;
-  }
-
-  const diff = diffSnippets(proposed, final);
-  return <p className={className}>{renderDiffPieces(side === "proposed" ? diff.proposed : diff.final)}</p>;
-}
-
-function AppChrome({ children }: { children: ReactNode }) {
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div>
-          <Link className="brand" to="/">
-            Rulemaking Engine
-          </Link>
-        </div>
-      </header>
-      <main>{children}</main>
+    <div className="priority-dist-bar">
+      <div className="priority-dist-meta">
+        <span className="priority-dist-label">Linked changes</span>
+        <p className="priority-dist-legend">
+          <strong>{commentLinked}</strong> of {total} · {linkedPct}%
+        </p>
+      </div>
+      <div className="priority-dist-track" aria-hidden="true">
+        <div
+          className="priority-dist-seg priority-dist-seg-linked"
+          style={{ flex: commentLinked }}
+          title={`${commentLinked} linked changes`}
+        />
+        <div
+          className="priority-dist-seg priority-dist-seg-unlinked"
+          style={{ flex: unlinked }}
+          title={`${unlinked} without comment linkage`}
+        />
+      </div>
     </div>
   );
 }
 
-function LoadingView({ label }: { label: string }) {
+function EmptyState({
+  title,
+  copy = "Try clearing a filter or broadening your search terms.",
+}: {
+  title: string;
+  copy?: string;
+}) {
   return (
-    <section className="panel loading-panel">
-      <p className="eyebrow">Loading</p>
-      <h1>{label}</h1>
-      <p>Fetching the published snapshot...</p>
-    </section>
-  );
-}
-
-function ErrorView({ title, message }: { title: string; message: string }) {
-  return (
-    <section className="panel error-panel">
-      <p className="eyebrow">Snapshot Error</p>
-      <h1>{title}</h1>
-      <p>{message}</p>
-    </section>
-  );
-}
-
-function InsightLoadingPanel({ title }: { title: string }) {
-  return (
-    <section className="panel insight-banner">
-      <p className="eyebrow">Insight Report</p>
-      <h2>{title}</h2>
-      <p className="meta-line">Loading insight report...</p>
-    </section>
+    <div className="empty-state" role="status">
+      <div className="empty-state-icon" aria-hidden="true">
+        ⌕
+      </div>
+      <p className="empty-state-title">{title}</p>
+      <p className="empty-state-copy">{copy}</p>
+    </div>
   );
 }
 
 function HomePage() {
   const manifestState = useAsyncData<SnapshotManifest>(() => loadManifest(), []);
   const indexState = useAsyncData<DocketIndex>(() => loadDocketIndex(), []);
+  const releaseSummaryState = useAsyncData<ReleaseSummary>(() => loadReleaseSummary(), []);
   const homeDocketIds = indexState.status === "ready" ? indexState.data.dockets.map((docket) => docket.docket_id) : [];
   const insightPreviewStates = useDocketInsightStates(homeDocketIds);
 
@@ -516,86 +215,101 @@ function HomePage() {
 
   return (
     <AppChrome>
-      <section className="hero panel">
-        <p className="eyebrow">Docket Stories</p>
-        <h1>Choose a docket</h1>
-        <p className="lead">
-          Start with a docket summary, review the top commenter themes, then inspect the priority change cards and
-          evidence.
-        </p>
-        <p className="meta-line">Snapshot published {formatStamp(manifest.snapshot.published_at)}.</p>
-        <div className="stat-grid">
-          <div className="stat-card">
-            <span>Dockets</span>
-            <strong>{manifest.snapshot.docket_count}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Change cards</span>
-            <strong>{totalCards}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Comment themes</span>
-            <strong>{totalCommentThemes}</strong>
-          </div>
+      <div className="exec-band">
+        <div className="exec-band-left">
+          <p className="exec-kicker">Regulatory Intelligence</p>
+          <h1 className="exec-title">Choose a docket</h1>
+          <p className="exec-sub">
+            Select a docket to read the executive summary, inspect comment themes, and review priority changes with
+            evidence links.
+          </p>
+          <p className="exec-meta">Snapshot {formatStamp(manifest.snapshot.published_at)}</p>
         </div>
-      </section>
+        <div className="exec-band-kpis">
+          <div className="kpi-tile">
+            <span className="kpi-label">Dockets</span>
+            <strong className="kpi-value">{manifest.snapshot.docket_count}</strong>
+          </div>
+          <div className="kpi-tile">
+            <span className="kpi-label">Changes</span>
+            <strong className="kpi-value">{totalCards}</strong>
+          </div>
+          <div className="kpi-tile">
+            <span className="kpi-label">Themes</span>
+            <strong className="kpi-value">{totalCommentThemes}</strong>
+          </div>
+          {releaseSummaryState.status === "ready" ? (
+            <>
+              <div className="kpi-tile">
+                <span className="kpi-label">Eval</span>
+                <strong className="kpi-value">
+                  {releaseSummaryState.data.evaluation.available}/{releaseSummaryState.data.docket_count}
+                </strong>
+              </div>
+              <div className="kpi-tile">
+                <span className="kpi-label">Insights</span>
+                <strong className="kpi-value">
+                  {releaseSummaryState.data.insights.available}/{releaseSummaryState.data.docket_count}
+                </strong>
+              </div>
+            </>
+          ) : null}
+        </div>
+      </div>
 
       <section className="panel">
         <div className="section-header">
           <div>
-            <p className="eyebrow">Story Launcher</p>
-            <h2>Choose a docket</h2>
+            <p className="eyebrow">Available Dockets</p>
+            <h2>Select a docket to begin</h2>
           </div>
         </div>
-        <div className="docket-grid">
+        <div className="docket-selector">
           {docketIndex.dockets.map((docket) => {
             const insightState = insightPreviewStates[docket.docket_id] || { status: "loading" };
             const insightReport = insightState.status === "ready" ? insightState.data : null;
-            const topFinding = insightReport?.top_findings.find((finding) => finding.card_ids.length > 0);
             const storyTitle = docketStoryTitle(docket.docket_id, docket.display_title);
+
             return (
               <Link
                 key={docket.docket_id}
-                className="docket-card story-card story-card-link"
+                className="docket-row"
                 to={`/dockets/${docket.docket_id}`}
                 aria-label={`Open ${storyTitle}`}
               >
-                <div className="docket-card-header">
-                  <div>
-                    <p className="eyebrow">{docket.docket_id}</p>
-                    <h3>{storyTitle}</h3>
-                  </div>
-                  <span className={`status-chip ${docket.insight_available ? "available" : "not_available"}`}>
-                    {docket.insight_available ? "insights available" : "insights unavailable"}
+                <div className="docket-row-id">
+                  <span className="docket-row-eyebrow">{docket.docket_id}</span>
+                  <span className="docket-row-title">{storyTitle}</span>
+                </div>
+                <div className="docket-row-stats">
+                  <span className="docket-stat">
+                    <strong>{docket.total_change_cards}</strong> changes
+                  </span>
+                  <span className="docket-stat">
+                    <strong>{docket.total_clusters}</strong> themes
+                  </span>
+                  <span className="docket-stat">
+                    <strong>{docket.labeled_clusters}</strong> labeled
                   </span>
                 </div>
-
                 {insightState.status === "loading" ? (
-                  <p className="meta-line">Loading insight preview...</p>
+                  <span className="docket-row-preview meta-line">Loading...</span>
                 ) : insightReport ? (
-                  <>
-                    <p className="story-summary">{insightReport.executive_summary}</p>
-                    {topFinding ? (
-                      <div className="story-teaser">
-                        <p className="eyebrow">Top commenter theme</p>
-                        <h4>{topFinding.title}</h4>
-                        <p>{topFinding.summary}</p>
-                      </div>
-                    ) : null}
-                    <div className="story-teaser">
-                      <p className="eyebrow">Where final text appears aligned</p>
-                      <p>{insightReport.rule_story.where_final_text_aligned}</p>
-                    </div>
-                  </>
+                  <span className="docket-row-preview">{insightReport.top_findings[0]?.title || "-"}</span>
                 ) : (
-                  <p className="meta-line">No insight preview published for this docket yet.</p>
+                  <span className="docket-row-preview meta-line">No insight preview</span>
                 )}
-
-                <div className="story-meta">
-                  <span>{docket.total_change_cards} change cards</span>
-                  <span>{docket.total_clusters} comment themes</span>
-                  <span>{docket.insight_available ? "insights available" : "insights unavailable"}</span>
+                <div className="docket-row-badges">
+                  <span className={`status-chip ${docket.insight_available ? "available" : "not_available"}`}>
+                    {docket.insight_available ? "Insights" : "No insights"}
+                  </span>
+                  <span className={`status-chip ${docket.evaluation_available ? "available" : "not_available"}`}>
+                    {docket.evaluation_available ? "Eval" : "No eval"}
+                  </span>
                 </div>
+                <span className="docket-row-arrow" aria-hidden="true">
+                  &rsaquo;
+                </span>
               </Link>
             );
           })}
@@ -613,6 +327,41 @@ function DocketPage() {
   const insightState = useAsyncData<InsightReport | null>(() => loadInsightReport(docketId), [docketId]);
   const [searchParams, setSearchParams] = useSearchParams();
   const [showLowerSignalCards, setShowLowerSignalCards] = useState(false);
+  const [showEval, setShowEval] = useState(false);
+  const [headerInView, setHeaderInView] = useState(true);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const detailPaneRef = useRef<HTMLDivElement | null>(null);
+  const tab = searchParams.get("tab") || "changes";
+  const selectedCardId = searchParams.get("card") || null;
+
+  useEffect(() => {
+    if (selectedCardId && detailPaneRef.current) {
+      detailPaneRef.current.scrollTop = 0;
+    }
+  }, [selectedCardId]);
+
+  useEffect(() => {
+    if (!selectedCardId) {
+      return;
+    }
+
+    const row = document.querySelector<HTMLElement>(`[data-card-id="${selectedCardId}"]`);
+    row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [selectedCardId]);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      setHeaderInView(entry.isIntersecting);
+    });
+    observer.observe(header);
+
+    return () => observer.disconnect();
+  }, []);
 
   if (reportState.status === "loading" || evalState.status === "loading") {
     return <LoadingView label={`Loading ${docketId}`} />;
@@ -627,15 +376,16 @@ function DocketPage() {
   const report = reportState.data;
   const evalReport = evalState.data;
   const insightReport = insightState.status === "ready" ? insightState.data : null;
-  const visibleTopFindings = insightReport
-    ? insightReport.top_findings.filter((finding) => finding.card_ids.length > 0).slice(0, 5)
-    : [];
+  const clusterById = new Map(report.clusters.map((cluster) => [cluster.cluster_id, cluster]));
   const changeType = searchParams.get("changeType") || "all";
   const signal = searchParams.get("signal") || "all";
   const clusterState = searchParams.get("clusterState") || "all";
-  const clusterQuery = (searchParams.get("clusterQuery") || "").trim().toLowerCase();
+  const clusterQueryRaw = searchParams.get("clusterQuery") || "";
+  const clusterQuery = clusterQueryRaw.trim().toLowerCase();
   const cardSort = normalizeCardSort(searchParams.get("cardSort"));
-  const cardMetrics = new Map(report.change_cards.map((card) => [card.card_id, cardDisplayMetrics(card)]));
+  const visibleTopFindings = insightReport
+    ? insightReport.top_findings.filter((finding) => finding.card_ids.length > 0).slice(0, 5)
+    : [];
 
   const filteredClusters = report.clusters.filter((cluster) => {
     const hasLabel = Boolean(cluster.label);
@@ -643,13 +393,11 @@ function DocketPage() {
       clusterState === "all" ||
       (clusterState === "labeled" && hasLabel) ||
       (clusterState === "unlabeled" && !hasLabel);
-    const haystack = [cluster.label || "", cluster.label_description || "", ...(cluster.top_keywords || [])]
-      .join(" ")
-      .toLowerCase();
-    const matchesQuery = !clusterQuery || haystack.includes(clusterQuery);
+    const matchesQuery = !clusterQuery || clusterSearchText(cluster).includes(clusterQuery);
     return matchesState && matchesQuery;
   });
 
+  const cardMetrics = new Map(report.change_cards.map((card) => [card.card_id, cardDisplayMetrics(card)]));
   const filteredCards = report.change_cards
     .filter((card) => {
       const signalLevel = card.alignment_signal?.level || "none";
@@ -659,32 +407,48 @@ function DocketPage() {
         clusterState === "all" ||
         (clusterState === "labeled" && hasLabeledCluster) ||
         (clusterState === "unlabeled" && !hasLabeledCluster);
+      const matchesClusterQuery =
+        !clusterQuery ||
+        relatedClusters.some((cluster) => {
+          const reportCluster = clusterById.get(cluster.cluster_id);
+          return clusterSearchText({
+            label: cluster.label ?? reportCluster?.label ?? null,
+            label_description: cluster.label_description ?? reportCluster?.label_description ?? null,
+            top_keywords: reportCluster?.top_keywords || [],
+          }).includes(clusterQuery);
+        });
+
       return (
         (changeType === "all" || card.change_type === changeType) &&
         (signal === "all" || signalLevel === signal) &&
-        matchesClusterState
+        matchesClusterState &&
+        matchesClusterQuery
       );
     })
     .sort((a, b) =>
       compareCardsByDisplayMetrics(a, b, cardMetrics.get(a.card_id)!, cardMetrics.get(b.card_id)!, cardSort)
     );
+
   const commentLinkedCardCount = report.change_cards.filter((card) => {
     const metrics = cardMetrics.get(card.card_id)!;
     return !metrics.isDocketProcess && metrics.linkedComments > 0;
   }).length;
+
   const primaryCards = filteredCards.filter((card) => {
     const metrics = cardMetrics.get(card.card_id)!;
     return isPrimaryCard(metrics);
   });
+
   const foldedCards = filteredCards.filter((card) => {
     const metrics = cardMetrics.get(card.card_id)!;
     return !isPrimaryCard(metrics);
   });
 
+  const visibleChangeRows = showLowerSignalCards ? [...primaryCards, ...foldedCards] : primaryCards;
+  const selectedCard = selectedCardId
+    ? report.change_cards.find((card) => card.card_id === selectedCardId) ?? null
+    : null;
   const changeTypes = Array.from(new Set(report.change_cards.map((card) => card.change_type).filter(Boolean)));
-  const signalLevels = Array.from(
-    new Set(report.change_cards.map((card) => card.alignment_signal?.level || "none").filter(Boolean))
-  );
 
   function updateFilter(name: string, value: string) {
     const next = new URLSearchParams(searchParams);
@@ -696,428 +460,375 @@ function DocketPage() {
     setSearchParams(next, { replace: true });
   }
 
-  return (
-    <AppChrome>
-      <section className="hero panel">
-        <p className="eyebrow">Docket</p>
-        <h1>{report.docket_id}</h1>
-        <p className="lead">Review the docket story, then inspect the priority changes and evidence links.</p>
-        <p className="meta-line">Snapshot published {formatStamp(report.generated_at)}.</p>
-        <div className="stat-grid">
-          <div className="stat-card">
-            <span>Comments</span>
-            <strong>{report.summary.total_comments}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Unique comments</span>
-            <strong>{report.summary.total_canonical_comments}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Comment themes</span>
-            <strong>{report.summary.total_clusters}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Comment-linked cards</span>
-            <strong>{commentLinkedCardCount}</strong>
-          </div>
-          <div className="stat-card">
-            <span>Total change cards</span>
-            <strong>{report.summary.total_change_cards}</strong>
-          </div>
-        </div>
-      </section>
-
-      {insightState.status === "loading" ? (
-        <InsightLoadingPanel title="Loading Docket Analysis" />
-      ) : insightReport ? (
-        <section className="panel insight-banner">
-          <div className="section-header">
-            <div>
-              <p className="eyebrow">Insight Report</p>
-              <h2>Docket Analysis</h2>
-            </div>
-          </div>
-
-          <p className="insight-summary">{insightReport.executive_summary}</p>
-
-          <div className="rule-story-grid">
-            <div className="rule-story-cell">
-              <p className="eyebrow">What Changed</p>
-              <p>{insightReport.rule_story.what_changed}</p>
-            </div>
-            <div className="rule-story-cell">
-              <p className="eyebrow">Commenter Themes</p>
-              <p>{insightReport.rule_story.what_commenters_emphasized}</p>
-            </div>
-            <div className="rule-story-cell">
-              <p className="eyebrow">Comment Alignment</p>
-              <p>{insightReport.rule_story.where_final_text_aligned}</p>
-            </div>
-          </div>
-
-          {visibleTopFindings.length > 0 ? (
-            <div className="finding-list">
-              <p className="eyebrow">Top Findings</p>
-              {visibleTopFindings.map((finding) => (
-                <article key={finding.finding_id} className="finding-card">
-                  <h3 className="finding-title">{finding.title}</h3>
-                  <p className="meta-line">
-                    {finding.card_ids.length} change card{finding.card_ids.length === 1 ? "" : "s"}
-                  </p>
-                  <p className="finding-summary">{finding.summary}</p>
-                  <p className="finding-summary">{finding.why_it_matters}</p>
-                  <FindingEvidenceLine finding={finding} />
-                </article>
-              ))}
-            </div>
-          ) : null}
-
-          <p className="meta-line insight-caveats">{insightReport.rule_story.caveats}</p>
-        </section>
-      ) : null}
-
-      <section className="panel">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Filters</p>
-            <h2>Review priority changes</h2>
-          </div>
-        </div>
-        <div className="filters">
-          <label>
-            Change type
-            <select value={changeType} onChange={(event) => updateFilter("changeType", event.target.value)}>
-              <option value="all">All</option>
-              {changeTypes.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Signal
-            <select value={signal} onChange={(event) => updateFilter("signal", event.target.value)}>
-              <option value="all">All</option>
-              {signalLevels.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Sort cards
-            <select value={cardSort} onChange={(event) => updateFilter("cardSort", event.target.value)}>
-              <option value="priority">Priority, then size</option>
-              <option value="size">Largest change, then priority</option>
-            </select>
-          </label>
-          <label>
-            Comment theme state
-            <select value={clusterState} onChange={(event) => updateFilter("clusterState", event.target.value)}>
-              <option value="all">All</option>
-              <option value="labeled">Labeled only</option>
-              <option value="unlabeled">Unlabeled only</option>
-            </select>
-          </label>
-          <label className="wide-filter">
-            Comment theme search
-            <input
-              value={searchParams.get("clusterQuery") || ""}
-              onChange={(event) => updateFilter("clusterQuery", event.target.value)}
-              placeholder="Search labels, descriptions, or keywords"
-            />
-          </label>
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Priority Changes</p>
-            <h2>{primaryCards.length} priority change{primaryCards.length === 1 ? "" : "s"} shown</h2>
-            <p className="meta-line">
-              Comment-linked regulatory changes appear first. Large no-comment changes and docket-process cards remain
-              available below.
-            </p>
-          </div>
-        </div>
-        <div className="card-list">
-          {primaryCards.map((card) => (
-            <ChangeCardRow
-              key={card.card_id}
-              docketId={report.docket_id}
-              card={card}
-              metrics={cardMetrics.get(card.card_id)!}
-            />
-          ))}
-          {filteredCards.length === 0 ? <p>No priority changes match the current filters.</p> : null}
-          {filteredCards.length > 0 && primaryCards.length === 0 ? (
-            <p>Only lower-signal or docket-process cards match the current filters.</p>
-          ) : null}
-          {foldedCards.length > 0 ? (
-            <button
-              type="button"
-              className="inline-action fold-control"
-              onClick={() => setShowLowerSignalCards((value) => !value)}
-            >
-              {showLowerSignalCards
-                ? "Hide lower-signal and docket-process cards"
-                : `Show ${foldedCards.length} lower-signal and docket-process card${foldedCards.length === 1 ? "" : "s"}`}
-            </button>
-          ) : null}
-          {showLowerSignalCards && foldedCards.length > 0 ? (
-            <div className="folded-card-group">
-              <div>
-                <p className="eyebrow">Lower-signal and docket-process cards</p>
-                <h3>{foldedCards.length} card{foldedCards.length === 1 ? "" : "s"} available</h3>
-              </div>
-              {foldedCards.map((card) => (
-                <ChangeCardRow
-                  key={card.card_id}
-                  docketId={report.docket_id}
-                  card={card}
-                  metrics={cardMetrics.get(card.card_id)!}
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
-      </section>
-
-      <section className="panel">
-        <div className="section-header">
-          <div>
-            <p className="eyebrow">Comment Themes</p>
-            <h2>{filteredClusters.length} comment themes</h2>
-          </div>
-        </div>
-        <div className="cluster-list">
-          {filteredClusters.map((cluster) => (
-            <article key={cluster.cluster_id} className="cluster-card">
-              <div className="cluster-header">
-                <h3>{cluster.label || "Unlabeled comment theme"}</h3>
-                <span className={`status-chip ${cluster.label ? "available" : "not_available"}`}>
-                  {cluster.label ? "labeled" : "unlabeled"}
-                </span>
-              </div>
-              <p>{cluster.label_description || "No local label description yet."}</p>
-              <p className="meta-line">
-                {cluster.canonical_count} unique arguments, {cluster.total_raw_comments} total submissions
-              </p>
-              <div className="keyword-row">
-                {cluster.top_keywords.map((keyword) => (
-                  <span key={keyword} className="keyword-pill">
-                    {keyword}
-                  </span>
-                ))}
-              </div>
-            </article>
-          ))}
-          {filteredClusters.length === 0 ? <p>No comment themes match the current filters.</p> : null}
-        </div>
-      </section>
-
-      <details className={`panel eval-banner ${evalReport.status}`}>
-        <summary>Snapshot quality details</summary>
-        <div className="quality-details">
-          <h2>{evalReport.status === "available" ? "Blind/seed evaluation available" : "Evaluation not yet annotated"}</h2>
-          {evalReport.status === "available" ? (
-            <p>
-              {evalReport.gold_set_provenance?.annotation_method || "unknown"} by{" "}
-              {evalReport.gold_set_provenance?.annotator || evalReport.gold_set_annotator || "unknown"} on{" "}
-              {formatStamp(evalReport.gold_set_provenance?.annotated_at)}
-            </p>
-          ) : (
-            <p>The site shows the current docket output, but no committed blind gold set is available yet.</p>
-          )}
-          {evalReport.status === "available" ? (
-            <ul className="metric-list">
-              {summarizeMetricBlock(evalReport.alignment_metrics).slice(0, 3).map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      </details>
-    </AppChrome>
-  );
-}
-
-function ChangeCardRow({
-  docketId,
-  card,
-  metrics,
-}: {
-  docketId: string;
-  card: ChangeCard;
-  metrics: CardDisplayMetrics;
-}) {
-  const commentCount = metrics.linkedComments;
-  const preambleCount = metrics.preambleLinks;
-
-  return (
-    <article className="change-card">
-      <div className="change-card-header">
-        <div>
-          <p className="eyebrow">{card.card_id}</p>
-          <h3>{card.final_heading || card.proposed_heading || "Untitled section"}</h3>
-        </div>
-        <div className="chip-row">
-          <span className={`status-chip ${priorityChipClass(metrics)}`}>
-            {metrics.priorityLabel}
-          </span>
-          <span className={`status-chip ${sizeChipClass(metrics)}`}>
-            {metrics.sizeLabel}
-          </span>
-          <span className="status-chip available">{card.change_type || "unknown"}</span>
-          <span className={`status-chip ${commentCount > 0 ? "available" : "not_available"}`}>
-            {commentCount > 0 ? `${commentCount} linked comments` : "No linked comments"}
-          </span>
-        </div>
-      </div>
-      <p className="meta-line">{card.alignment_signal?.evidence_note || "No evidence note available."}</p>
-      <div className="card-grid">
-        <div>
-          <h4>Proposed</h4>
-          <ChangeSnippet card={card} side="proposed" preview />
-        </div>
-        <div>
-          <h4>Final</h4>
-          <ChangeSnippet card={card} side="final" preview />
-        </div>
-      </div>
-      <p className="meta-line">
-        Related comment themes: {(card.related_clusters || []).length}
-        {preambleCount > 0 ? ` | Preamble links: ${preambleCount}` : ""}
-      </p>
-      <Link className="action-link" to={`/dockets/${docketId}/cards/${card.card_id}`}>
-        Open card detail
-      </Link>
-    </article>
-  );
-}
-
-function FindingEvidenceLine({ finding }: { finding: InsightFinding }) {
-  const line = findingEvidenceLine(finding);
-  return line ? <p className="meta-line">{line}</p> : null;
-}
-
-function getCardInsightContext(
-  insightReport: InsightReport | null,
-  cardId: string
-): CardInsightContext {
-  if (!insightReport) {
-    return { priorityCard: null, linkedFindings: [], hasStalePriorityFindings: false };
+  function resetChangeFilters() {
+    const next = new URLSearchParams(searchParams);
+    ["changeType", "signal", "cardSort", "clusterQuery", "clusterState"].forEach((name) => next.delete(name));
+    setSearchParams(next, { replace: true });
   }
 
-  const priorityCard = insightReport.priority_cards.find((item) => item.card_id === cardId) || null;
-  if (priorityCard) {
-    const findingsById = new Map(insightReport.top_findings.map((finding) => [finding.finding_id, finding]));
-    const linkedFindings = priorityCard.finding_ids
-      .map((findingId) => findingsById.get(findingId))
-      .filter((finding): finding is InsightFinding => Boolean(finding));
-    if (linkedFindings.length > 0) {
-      return {
-        priorityCard,
-        linkedFindings,
-        hasStalePriorityFindings: linkedFindings.length < priorityCard.finding_ids.length,
-      };
+  function setTab(value: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", value);
+    if (value !== "changes") {
+      next.delete("card");
+    }
+    setSearchParams(next, { replace: true });
+  }
+
+  function selectCard(cardId: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set("card", cardId);
+    next.set("tab", "changes");
+    setSearchParams(next, { replace: true });
+  }
+
+  function handleListKeyDown(event: KeyboardEvent<HTMLDivElement>, currentIndex: number) {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextCard = visibleChangeRows[currentIndex + 1];
+      if (nextCard) {
+        selectCard(nextCard.card_id);
+      }
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const previousCard = visibleChangeRows[currentIndex - 1];
+      if (previousCard) {
+        selectCard(previousCard.card_id);
+      }
     }
   }
 
-  // Fall back to reverse card references when a priority card is absent or points at findings not in this snapshot.
-  return {
-    priorityCard,
-    linkedFindings: insightReport.top_findings.filter((finding) => finding.card_ids.includes(cardId)),
-    hasStalePriorityFindings: Boolean(priorityCard?.finding_ids.length),
-  };
-}
-
-function CardInsightPanel({
-  insightReport,
-  priorityCard,
-  linkedFindings,
-  hasStalePriorityFindings,
-}: {
-  insightReport: InsightReport | null;
-  priorityCard: InsightPriorityCard | null;
-  linkedFindings: InsightFinding[];
-  hasStalePriorityFindings: boolean;
-}) {
-  const [showAllFindings, setShowAllFindings] = useState(false);
-
-  if (!insightReport) {
-    return null;
+  function toggleEval() {
+    setShowEval((value) => !value);
   }
 
-  const canToggleFindings = linkedFindings.length > LINKED_FINDING_LIMIT;
-  const visibleFindings = showAllFindings ? linkedFindings : linkedFindings.slice(0, LINKED_FINDING_LIMIT);
-  const hiddenFindingCount = Math.max(linkedFindings.length - visibleFindings.length, 0);
+  function clusterMetrics(clusterId: string): { breakdown: ThemeSignalBreakdown; linkedCardCount: number } {
+    const linkedCards = report.change_cards.filter((card) =>
+      (card.related_clusters || []).some((cluster) => cluster.cluster_id === clusterId)
+    );
+    const breakdown: ThemeSignalBreakdown = { high: 0, medium: 0, low: 0, none: 0, total: linkedCards.length };
+
+    for (const card of linkedCards) {
+      const level = card.alignment_signal?.level || "none";
+      if (level === "high" || level === "medium" || level === "low" || level === "none") {
+        breakdown[level] += 1;
+      } else {
+        breakdown.none += 1;
+      }
+    }
+
+    return { breakdown, linkedCardCount: linkedCards.length };
+  }
 
   return (
-    <section className="panel insight-banner">
-      <div className="section-header">
-        <div>
-          <p className="eyebrow">Insight Drilldown</p>
-          <h2>Why This Card Matters</h2>
+    <AppChrome>
+      {!headerInView ? (
+        <div className="docket-context-bar">
+          <span className="docket-context-id">{report.docket_id}</span>
+          <span className="docket-context-tab">{docketTabLabel(tab)}</span>
+          <span className="docket-context-count">
+            {tab === "changes" ? `${filteredCards.length} changes` : `${filteredClusters.length} themes`}
+          </span>
         </div>
-        {priorityCard ? (
-          <div className="chip-row">
-            <span className="status-chip available">Card priority {priorityCard.score}</span>
-            <span className="status-chip">Comment signal: {priorityCard.alignment_level || "none"}</span>
-            <span className="status-chip">{priorityCard.change_type || "unknown"}</span>
+      ) : null}
+
+      <Breadcrumb items={[{ label: "Home", href: "/" }, { label: report.docket_id }]} />
+
+      <div className="docket-header" ref={headerRef}>
+        <div className="docket-header-top">
+          <div className="docket-title-block">
+            <p className="eyebrow">Docket</p>
+            <h1 className="docket-title">{docketStoryTitle(report.docket_id)}</h1>
+            <p className="eyebrow docket-subid">{report.docket_id}</p>
           </div>
-        ) : null}
+          <PriorityDistBar commentLinked={commentLinkedCardCount} total={report.summary.total_change_cards} />
+        </div>
+        <div className="docket-stat-strip">
+          <div className="docket-stat-item">
+            <strong>{report.summary.total_canonical_comments}</strong>
+            <span>Unique comments</span>
+          </div>
+          <div className="docket-stat-item">
+            <strong>{report.summary.total_clusters}</strong>
+            <span>Themes</span>
+          </div>
+          <div className="docket-stat-item">
+            <strong>{commentLinkedCardCount}</strong>
+            <span>Linked changes</span>
+          </div>
+          <div className="docket-stat-item">
+            <strong>{report.summary.total_change_cards}</strong>
+            <span>Total changes</span>
+          </div>
+        </div>
       </div>
 
-      {priorityCard ? (
-        <p className="meta-line">Priority card section: {priorityCard.section_title || "Untitled section"}</p>
-      ) : null}
+      <section className="panel workspace-surface">
+        <nav className="tab-bar" aria-label="Docket sections">
+          <button
+            type="button"
+            className={`tab-btn${tab === "overview" ? " active" : ""}`}
+            onClick={() => setTab("overview")}
+            aria-selected={tab === "overview"}
+          >
+            Overview
+          </button>
+          <button
+            type="button"
+            className={`tab-btn${tab === "changes" ? " active" : ""}`}
+            onClick={() => setTab("changes")}
+            aria-selected={tab === "changes"}
+          >
+            Priority Changes
+            <span className="tab-count">{filteredCards.length}</span>
+          </button>
+          <button
+            type="button"
+            className={`tab-btn${tab === "themes" ? " active" : ""}`}
+            onClick={() => setTab("themes")}
+            aria-selected={tab === "themes"}
+          >
+            Comment Themes
+            <span className="tab-count">{filteredClusters.length}</span>
+          </button>
+        </nav>
 
-      {visibleFindings.length > 0 ? (
-        <div className="finding-list detail-finding-list">
-          {visibleFindings.map((finding) => (
-            <article key={finding.finding_id} className="finding-card">
-              <h3 className="finding-title">{finding.title}</h3>
-              <p className="finding-summary">{finding.why_it_matters}</p>
-              <FindingEvidenceLine finding={finding} />
-            </article>
-          ))}
-        </div>
-      ) : (
-        <p>
-          {hasStalePriorityFindings
-            ? "Card priority is available, but referenced findings are not in this snapshot."
-            : "No insight finding linked for this card."}
-        </p>
-      )}
+        {tab === "overview" ? (
+          <div className="tab-panel">
+            {insightState.status === "loading" ? (
+              <InsightLoadingPanel title="Loading Docket Analysis" />
+            ) : insightReport ? (
+              <section className="panel insight-banner">
+                <div className="section-header">
+                  <div>
+                    <p className="eyebrow">Insight Report</p>
+                    <h2>Docket Analysis</h2>
+                  </div>
+                </div>
 
-      {hiddenFindingCount > 0 ? (
-        <p className="meta-line">
-          {hiddenFindingCount} more linked finding{hiddenFindingCount === 1 ? "" : "s"} not shown.
-        </p>
-      ) : null}
-      {canToggleFindings ? (
-        <button type="button" className="inline-action" onClick={() => setShowAllFindings((value) => !value)}>
-          {showAllFindings ? `Show first ${LINKED_FINDING_LIMIT} findings` : `Show all ${linkedFindings.length} linked findings`}
-        </button>
-      ) : null}
-    </section>
+                <p className="insight-summary">{insightReport.executive_summary}</p>
+
+                <div className="rule-story-grid">
+                  <div className="rule-story-cell">
+                    <p className="eyebrow">What Changed</p>
+                    <p>{insightReport.rule_story.what_changed}</p>
+                  </div>
+                  <div className="rule-story-cell">
+                    <p className="eyebrow">Commenter Themes</p>
+                    <p>{insightReport.rule_story.what_commenters_emphasized}</p>
+                  </div>
+                  <div className="rule-story-cell">
+                    <p className="eyebrow">Comment Alignment</p>
+                    <p>{insightReport.rule_story.where_final_text_aligned}</p>
+                  </div>
+                </div>
+
+                {visibleTopFindings.length > 0 ? (
+                  <div className="finding-list">
+                    <p className="eyebrow">Top Findings</p>
+                    {visibleTopFindings.map((finding) => (
+                      <article key={finding.finding_id} className="finding-card">
+                        <h3 className="finding-title">{finding.title}</h3>
+                        <p className="meta-line">
+                          {finding.card_ids.length} change card{finding.card_ids.length === 1 ? "" : "s"}
+                        </p>
+                        <p className="finding-summary">{finding.summary}</p>
+                        <p className="finding-summary">{finding.why_it_matters}</p>
+                        <FindingEvidenceLine finding={finding} />
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+
+                <p className="meta-line insight-caveats">{insightReport.rule_story.caveats}</p>
+              </section>
+            ) : (
+              <EmptyState title="No insight report is published for this docket" />
+            )}
+
+            <section className={`panel eval-panel ${evalReport.status}`}>
+              <div className="eval-panel-header" onClick={toggleEval}>
+                <div>
+                  <p className="eyebrow">Snapshot Quality</p>
+                  <h2>Snapshot quality details</h2>
+                </div>
+                <button
+                  type="button"
+                  className="eval-toggle-btn"
+                  aria-expanded={showEval}
+                  aria-controls="eval-quality-body"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleEval();
+                  }}
+                >
+                  {showEval ? "Collapse" : "Expand"}
+                </button>
+              </div>
+              <div id="eval-quality-body" style={{ display: showEval ? "block" : "none" }}>
+                <div className="quality-details">
+                  <h2>
+                    {evalReport.status === "available"
+                      ? "Blind/seed evaluation available"
+                      : "Evaluation not yet annotated"}
+                  </h2>
+                  {evalReport.status === "available" ? (
+                    <p>
+                      {evalReport.gold_set_provenance?.annotation_method || "unknown"} by{" "}
+                      {evalReport.gold_set_provenance?.annotator || evalReport.gold_set_annotator || "unknown"} on{" "}
+                      {formatStamp(evalReport.gold_set_provenance?.annotated_at)}
+                    </p>
+                  ) : (
+                    <p>The site shows the current docket output, but no committed blind gold set is available yet.</p>
+                  )}
+                  {evalReport.status === "available" ? (
+                    <ul className="metric-list">
+                      {summarizeMetricBlock(evalReport.alignment_metrics).slice(0, 3).map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {tab === "changes" ? (
+          <>
+            <FilterBar
+              changeType={changeType}
+              signal={signal}
+              cardSort={cardSort}
+              clusterQuery={clusterQueryRaw}
+              changeTypes={changeTypes}
+              resultCount={filteredCards.length}
+              totalCount={report.change_cards.length}
+              onFilter={updateFilter}
+              onReset={resetChangeFilters}
+            />
+
+            <div className="review-workspace">
+              <div className="review-list-pane" role="list">
+                <div className="review-list-header">
+                  <h2>{primaryCards.length} change{primaryCards.length === 1 ? "" : "s"} shown</h2>
+                </div>
+
+                {primaryCards.map((card, index) => (
+                  <ChangeListRow
+                    key={card.card_id}
+                    card={card}
+                    metrics={cardMetrics.get(card.card_id)!}
+                    selected={card.card_id === selectedCardId}
+                    index={index + 1}
+                    onClick={() => selectCard(card.card_id)}
+                    onKeyDown={(event) => handleListKeyDown(event, index)}
+                  />
+                ))}
+
+                {filteredCards.length === 0 ? <EmptyState title="No changes match these filters" /> : null}
+                {filteredCards.length > 0 && primaryCards.length === 0 ? (
+                  <p className="review-list-note">Only lower-signal or docket-process cards match the current filters.</p>
+                ) : null}
+
+                {foldedCards.length > 0 ? (
+                  <button
+                    type="button"
+                    className="inline-action fold-control"
+                    onClick={() => setShowLowerSignalCards((value) => !value)}
+                  >
+                    {showLowerSignalCards
+                      ? "Hide lower-signal and docket-process cards"
+                      : `Show ${foldedCards.length} lower-signal and docket-process card${foldedCards.length === 1 ? "" : "s"}`}
+                  </button>
+                ) : null}
+
+                {showLowerSignalCards && foldedCards.length > 0 ? (
+                  <div className="folded-card-group">
+                    <div>
+                      <p className="eyebrow">Lower-signal and docket-process cards</p>
+                      <h3>{foldedCards.length} card{foldedCards.length === 1 ? "" : "s"} available</h3>
+                    </div>
+                    {foldedCards.map((card, index) => (
+                      <ChangeListRow
+                        key={card.card_id}
+                        card={card}
+                        metrics={cardMetrics.get(card.card_id)!}
+                        selected={card.card_id === selectedCardId}
+                        index={primaryCards.length + index + 1}
+                        onClick={() => selectCard(card.card_id)}
+                        onKeyDown={(event) => handleListKeyDown(event, primaryCards.length + index)}
+                      />
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="review-detail-pane" ref={detailPaneRef}>
+                {selectedCard ? (
+                  <ChangeDetailPane
+                    card={selectedCard}
+                    metrics={cardMetrics.get(selectedCard.card_id)!}
+                    insightReport={insightReport}
+                    docketId={docketId}
+                  />
+                ) : (
+                  <div className="review-detail-empty">
+                    <p>Select a change from the list to review it here.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
+
+        {tab === "themes" ? (
+          <div className="tab-panel">
+            <div className="themes-toolbar">
+              <div>
+                <p className="eyebrow">Comment Themes</p>
+                <h2>{filteredClusters.length} comment themes</h2>
+              </div>
+              <label className="filter-field">
+                <span className="filter-label">Theme state</span>
+                <select value={clusterState} onChange={(event) => updateFilter("clusterState", event.target.value)}>
+                  <option value="all">All</option>
+                  <option value="labeled">Labeled only</option>
+                  <option value="unlabeled">Unlabeled only</option>
+                </select>
+              </label>
+              <label className="filter-field filter-search">
+                <span className="filter-label">Theme search</span>
+                <input
+                  value={clusterQueryRaw}
+                  onChange={(event) => updateFilter("clusterQuery", event.target.value)}
+                  placeholder="Search labels, descriptions, or keywords"
+                />
+              </label>
+            </div>
+
+            <div className="theme-list">
+              {filteredClusters.map((cluster, index) => {
+                const { breakdown, linkedCardCount } = clusterMetrics(cluster.cluster_id);
+                return (
+                  <ThemeRow
+                    key={cluster.cluster_id}
+                    cluster={cluster}
+                    signalBreakdown={breakdown}
+                    linkedCardCount={linkedCardCount}
+                    rank={index + 1}
+                    docketId={report.docket_id}
+                  />
+                );
+              })}
+              {filteredClusters.length === 0 ? <EmptyState title="No comment themes match these filters" /> : null}
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </AppChrome>
   );
-}
-
-function preambleLinkKey(link: PreambleLink, index: number): string {
-  const parts = [
-    link.preamble_section_id,
-    link.preamble_heading,
-    link.link_type,
-    link.relationship_label,
-    typeof link.link_score === "number" ? String(link.link_score) : undefined,
-  ].filter((part): part is string => Boolean(part));
-
-  return parts.length > 0 ? parts.join("|") : `link-${index}`;
 }
 
 function CardDetailPage() {
@@ -1141,55 +852,51 @@ function CardDetailPage() {
   }
 
   const insightReport = insightState.status === "ready" ? insightState.data : null;
+  const detailMetrics = cardDisplayMetrics(card);
+  const detailChangeType = changeTypeLabel(card.change_type);
+  const detailSynopsis = cardChangeSynopsis(card, detailMetrics);
+  const preambleLinks = card.preamble_links || [];
+  const cardLabel = card.final_heading || card.proposed_heading || card.card_id;
   const { priorityCard, linkedFindings, hasStalePriorityFindings } = getCardInsightContext(insightReport, cardId);
   const findingClusterIds = new Set(linkedFindings.flatMap((finding) => finding.cluster_ids));
-  const detailMetrics = cardDisplayMetrics(card);
-  const preambleLinks = card.preamble_links || [];
 
   return (
     <AppChrome>
+      <Breadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: docketId, href: `/dockets/${docketId}` },
+          { label: cardLabel },
+        ]}
+      />
+
       <section className="panel">
-        <Link className="back-link" to={`/dockets/${docketId}`}>
-          Back to {docketId}
-        </Link>
         <p className="eyebrow">{card.card_id}</p>
-        <h1>{card.final_heading || card.proposed_heading || "Untitled section"}</h1>
+        <h1>{cardLabel}</h1>
+        <p className="detail-heading-meta">{detailChangeType}</p>
         <div className="chip-row">
-          <span className={`status-chip ${priorityChipClass(detailMetrics)}`}>
-            {detailMetrics.priorityLabel}
-          </span>
-          <span className={`status-chip ${sizeChipClass(detailMetrics)}`}>
-            {detailMetrics.sizeLabel}
-          </span>
-          <span className="status-chip available">{card.change_type || "unknown"}</span>
-          <span className={`status-chip ${detailMetrics.linkedComments > 0 ? "available" : "not_available"}`}>
-            {detailMetrics.linkedComments > 0
-              ? `${detailMetrics.linkedComments} linked comments`
-              : "No linked comments"}
-          </span>
+          <span className={`status-chip ${priorityChipClass(detailMetrics)}`}>{detailMetrics.priorityLabel}</span>
+          <span className={`status-chip ${sizeChipClass(detailMetrics)}`}>{detailMetrics.sizeLabel}</span>
+          {detailMetrics.linkedComments > 0 ? (
+            <span className="status-chip chip-comment-count">{detailMetrics.linkedComments} comments</span>
+          ) : null}
         </div>
       </section>
 
-      {insightState.status === "loading" ? (
-        <InsightLoadingPanel title="Loading Card Insight" />
-      ) : (
+      {insightState.status === "loading" ? <InsightLoadingPanel title="Loading Card Insight" /> : null}
+
+      {insightState.status !== "loading" ? (
         <CardInsightPanel
           insightReport={insightReport}
           priorityCard={priorityCard}
           linkedFindings={linkedFindings}
           hasStalePriorityFindings={hasStalePriorityFindings}
         />
-      )}
+      ) : null}
 
-      <section className="panel detail-grid">
-        <div>
-          <p className="eyebrow">Proposed text</p>
-          <ChangeSnippet card={card} side="proposed" />
-        </div>
-        <div>
-          <p className="eyebrow">Final text</p>
-          <ChangeSnippet card={card} side="final" />
-        </div>
+      <section className="panel">
+        <p className="eyebrow">Text comparison</p>
+        <InlineDiff card={card} synopsis={detailSynopsis} />
       </section>
 
       <section className="panel">
@@ -1220,9 +927,7 @@ function CardDetailPage() {
               <p className="meta-line">Comments linked: {cluster.comment_count || 0}</p>
             </article>
           ))}
-          {(card.related_clusters || []).length === 0 ? (
-            <p>No related comment themes recorded for this card.</p>
-          ) : null}
+          {(card.related_clusters || []).length === 0 ? <p>No related comment themes recorded for this card.</p> : null}
         </div>
       </section>
 
@@ -1240,8 +945,7 @@ function CardDetailPage() {
                 <h3>{link.preamble_heading || link.preamble_section_id || "Preamble section"}</h3>
                 <p>{link.relationship_label || "No relationship label recorded."}</p>
                 <p className="meta-line">
-                  {link.link_type || "unknown"} | score{" "}
-                  {typeof link.link_score === "number" ? link.link_score : "n/a"}
+                  {link.link_type || "unknown"} | score {typeof link.link_score === "number" ? link.link_score : "n/a"}
                 </p>
               </article>
             ))}

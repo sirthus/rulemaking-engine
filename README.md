@@ -25,6 +25,7 @@ The V2 insight-first analyst surface is implemented for the locked three-docket 
 The current product includes:
 
 - a static read-only React insight and review surface
+- the completed UI overhaul across the home, overview, priority changes, comment themes, and card detail surfaces
 - `generate_insights.py` and per-docket `insight_report.json`
 - published insight reports under `site_data/current/`
 - a home docket story launcher
@@ -229,13 +230,17 @@ Current non-goals:
 The active handoff docs are tracked in Git so another machine can pull the repo and know what to do next:
 
 - `PROJECT_STATUS.md`: current state, accepted architecture decisions, verification notes, and next tasks
-- `BLUEPRINT.md`: V1 substrate blueprint and implementation history
-- `V2_BLUEPRINT.md`: implemented V2 insight-system blueprint and V2.5 direction note
 - `README.md`: quickstart and operator workflow
 - `CLAUDE.md`: Claude Code coordination and guardrails
 
-If a fresh checkout is unclear, read `PROJECT_STATUS.md` first. It is the canonical brief handoff and currently points next to V2.5 UI polish.
+If a fresh checkout is unclear, read `PROJECT_STATUS.md` first. It is the canonical brief handoff for the next work block.
 
 ## Roadmap
 
-V2 is implemented. The next product pass is V2.5: rework the React site so it comes across as a clean, modern analyst UI while preserving the static local-first architecture. See `BLUEPRINT.md` for the V1 substrate history and `V2_BLUEPRINT.md` for the V2 insight-system roadmap.
+The V2 insight surface and UI overhaul are complete for the current three-docket EPA scope.
+
+Tomorrow's planned work is:
+
+1. refactor the frontend and supporting code for maintainability
+2. improve performance across the site and publish flow where it matters
+3. turn the top-level `README.md` into a stronger Showpiece README for the project
