@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Link } from "react-router-dom";
 import type { ChangeCard, InsightReport } from "../models";
 import {
@@ -25,62 +26,69 @@ function copyCardReference(card: ChangeCard) {
   }
 }
 
-export function ChangeDetailPane({ card, metrics, insightReport, docketId }: ChangeDetailPaneProps) {
-  const { priorityCard, linkedFindings, hasStalePriorityFindings } = getCardInsightContext(insightReport, card.card_id);
-  const changeLabel = changeTypeLabel(card.change_type);
-  const synopsis = cardChangeSynopsis(card, metrics);
+export const ChangeDetailPane = memo(
+  function ChangeDetailPane({ card, metrics, insightReport, docketId }: ChangeDetailPaneProps) {
+    const { priorityCard, linkedFindings, hasStalePriorityFindings } = getCardInsightContext(insightReport, card.card_id);
+    const changeLabel = changeTypeLabel(card.change_type);
+    const synopsis = cardChangeSynopsis(card, metrics);
 
-  return (
-    <div className="detail-pane">
-      <div className="detail-pane-header">
-        <div className="detail-pane-header-top">
-          <div className="detail-pane-heading">
-            <p className="eyebrow">{card.card_id}</p>
-            <h2 className="detail-pane-title">{card.final_heading || card.proposed_heading || card.card_id}</h2>
-            <p className="detail-heading-meta">{changeLabel}</p>
-          </div>
-          <div className="detail-actions">
-            <button type="button" className="action-btn" onClick={() => copyCardReference(card)}>
-              Copy ref
-            </button>
-            <Link className="action-btn" to={`/dockets/${docketId}/cards/${card.card_id}`}>
-              Open full view
-            </Link>
-          </div>
-        </div>
-        <div className="chip-row detail-chip-row">
-          <span className={`status-chip ${priorityChipClass(metrics)}`}>{metrics.priorityLabel}</span>
-          <span className={`status-chip ${sizeChipClass(metrics)}`}>{metrics.sizeLabel}</span>
-          {metrics.linkedComments > 0 ? (
-            <span className="status-chip chip-comment-count">{metrics.linkedComments} comments</span>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <InlineDiff card={card} synopsis={synopsis} />
-      </div>
-
-      <WhyFlagged card={card} metrics={metrics} />
-
-      <CardInsightPanel
-        insightReport={insightReport}
-        priorityCard={priorityCard}
-        linkedFindings={linkedFindings}
-        hasStalePriorityFindings={hasStalePriorityFindings}
-      />
-
-      {(card.related_clusters || []).length > 0 ? (
-        <div className="detail-section">
-          <p className="eyebrow">Related Themes</p>
-          {(card.related_clusters || []).map((cluster) => (
-            <div key={cluster.cluster_id} className="detail-theme-row">
-              <span>{cluster.label || cluster.cluster_id}</span>
-              <span className="meta-line">{cluster.comment_count || 0} comments</span>
+    return (
+      <div className="detail-pane">
+        <div className="detail-pane-header">
+          <div className="detail-pane-header-top">
+            <div className="detail-pane-heading">
+              <p className="eyebrow">{card.card_id}</p>
+              <h2 className="detail-pane-title">{card.final_heading || card.proposed_heading || card.card_id}</h2>
+              <p className="detail-heading-meta">{changeLabel}</p>
             </div>
-          ))}
+            <div className="detail-actions">
+              <button type="button" className="action-btn" onClick={() => copyCardReference(card)}>
+                Copy ref
+              </button>
+              <Link className="action-btn" to={`/dockets/${docketId}/cards/${card.card_id}`}>
+                Open full view
+              </Link>
+            </div>
+          </div>
+          <div className="chip-row detail-chip-row">
+            <span className={`status-chip ${priorityChipClass(metrics)}`}>{metrics.priorityLabel}</span>
+            <span className={`status-chip ${sizeChipClass(metrics)}`}>{metrics.sizeLabel}</span>
+            {metrics.linkedComments > 0 ? (
+              <span className="status-chip chip-comment-count">{metrics.linkedComments} comments</span>
+            ) : null}
+          </div>
         </div>
-      ) : null}
-    </div>
-  );
-}
+
+        <div className="detail-section">
+          <InlineDiff card={card} synopsis={synopsis} />
+        </div>
+
+        <WhyFlagged card={card} metrics={metrics} />
+
+        <CardInsightPanel
+          insightReport={insightReport}
+          priorityCard={priorityCard}
+          linkedFindings={linkedFindings}
+          hasStalePriorityFindings={hasStalePriorityFindings}
+        />
+
+        {(card.related_clusters || []).length > 0 ? (
+          <div className="detail-section">
+            <p className="eyebrow">Related Themes</p>
+            {(card.related_clusters || []).map((cluster) => (
+              <div key={cluster.cluster_id} className="detail-theme-row">
+                <span>{cluster.label || cluster.cluster_id}</span>
+                <span className="meta-line">{cluster.comment_count || 0} comments</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    );
+  },
+  (previous, next) =>
+    previous.card === next.card &&
+    previous.metrics === next.metrics &&
+    previous.insightReport === next.insightReport &&
+    previous.docketId === next.docketId
+);

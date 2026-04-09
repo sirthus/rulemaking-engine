@@ -6,7 +6,17 @@ import os
 import re
 import time
 import unicodedata
-from datetime import datetime, timezone
+
+from pipeline_utils import (
+    STOPWORDS,
+    atomic_write_json,
+    normalize_heading,
+    normalize_text,
+    normalize_whitespace,
+    print_line,
+    read_json,
+    utc_now_iso,
+)
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -31,43 +41,6 @@ DOCKET_MANIFEST = [
 ]
 
 CONTENT_GROUPS = ("preamble_style", "reg_style")
-# Core stopwords only are used here because rulemaking terms still help align
-# section headings across proposed and final documents.
-STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "of",
-    "in",
-    "to",
-    "for",
-    "on",
-    "at",
-    "by",
-    "with",
-    "from",
-    "as",
-    "is",
-    "are",
-    "be",
-    "we",
-    "our",
-    "this",
-    "that",
-    "these",
-    "those",
-    "it",
-    "its",
-    "do",
-    "does",
-    "how",
-    "what",
-    "which",
-    "under",
-    "per",
-}
 
 OUTLINE_RANGE_RE = re.compile(
     r"\bSections?\s+([IVXivx]+(?:\.[A-Za-z0-9]+)*)\s*(?:through|to|-|–|and)\s*([IVXivx]+(?:\.[A-Za-z0-9]+)*)",
@@ -76,67 +49,8 @@ OUTLINE_RANGE_RE = re.compile(
 OUTLINE_RE = re.compile(r"\bSections?\s+([IVXivx]+(?:\.[A-Za-z0-9]+)*)", re.IGNORECASE)
 CFR_SECTION_SIGN_RE = re.compile(r"(?:§|\xa7|&#167;|&sect;)\s*(\d+\.\d+)", re.IGNORECASE)
 PLAIN_CFR_RE = re.compile(r"\bsection\s+(\d{2,}\.\d+)\b", re.IGNORECASE)
-
-
-def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
-
-
-def utc_now_iso() -> str:
-    return utc_now().replace(microsecond=0).isoformat()
-
-
-def atomic_write_bytes(path: str, data: bytes):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "wb") as handle:
-        handle.write(data)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_text(path: str, text: str):
-    atomic_write_bytes(path, text.encode("utf-8"))
-
-
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
-
-
-def normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
-
-
-def normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text or "")
-    return normalize_whitespace(text.lower())
-
-
-def normalize_heading(heading: str) -> str:
-    original_heading = unicodedata.normalize("NFKC", heading or "").strip()
-    heading = normalize_text(original_heading)
-    heading = heading.replace("§", " ")
-    heading = re.sub(r"[^a-z0-9\s]+", " ", heading)
-    return normalize_whitespace(heading)
-
-
-def strip_outline_prefix(heading: str) -> str:
-    original_heading = unicodedata.normalize("NFKC", heading or "").strip()
-    if original_heading.startswith("§") or re.match(r"^\d{2,}\.\d+\b", original_heading):
-        return original_heading
-    return re.sub(r"^(?:[IVXivx]+|[A-Za-z]|\d)\.\s+", "", original_heading)
-
-
 def heading_tokens(heading: str) -> set[str]:
-    normalized = normalize_heading(strip_outline_prefix(heading))
+    normalized = normalize_heading(heading, strip_outline_prefix=True)
     return {
         token
         for token in normalized.split()
@@ -218,13 +132,19 @@ def load_inputs(docket_id: str):
     return proposed, final, comments
 
 
-def _body_keyword_assist(proposed_section: dict, candidate_sections: list[dict]) -> tuple[dict | None, float]:
+def _body_keyword_assist(
+    proposed_section: dict,
+    candidate_sections: list[dict],
+    available_section_ids: set[str],
+) -> tuple[dict | None, float]:
     best_section = None
     best_score = 0.0
     proposed_tokens = proposed_section["_body_tokens_full"]
     if not proposed_tokens:
         return None, 0.0
     for candidate in candidate_sections:
+        if candidate["section_id"] not in available_section_ids:
+            continue
         candidate_tokens = candidate["_body_tokens_full"]
         overlap = len(proposed_tokens & candidate_tokens)
         score = overlap / len(proposed_tokens) if proposed_tokens else 0.0
@@ -241,8 +161,16 @@ def align_sections(proposed_sections: list[dict], final_sections: list[dict]):
         group: [section for section in final_sections if section["_content_group"] == group]
         for group in CONTENT_GROUPS
     }
+    proposed_by_group = {
+        group: [section for section in proposed_sections if section["_content_group"] == group]
+        for group in CONTENT_GROUPS
+    }
     matched_final_ids = set()
     alignments_by_proposed = {}
+    remaining_final_ids_by_group = {
+        group: {section["section_id"] for section in sections}
+        for group, sections in final_by_group.items()
+    }
 
     for group in CONTENT_GROUPS:
         heading_index = {}
@@ -252,7 +180,7 @@ def align_sections(proposed_sections: list[dict], final_sections: list[dict]):
             if not normalized_heading:
                 continue
             heading_index.setdefault(normalized_heading, []).append(section)
-        for proposed_section in [s for s in proposed_sections if s["_content_group"] == group]:
+        for proposed_section in proposed_by_group[group]:
             normalized_heading = proposed_section["_normalized_heading"]
             if not normalized_heading:
                 continue
@@ -265,6 +193,7 @@ def align_sections(proposed_sections: list[dict], final_sections: list[dict]):
                 matched_final = candidates[candidate_index]
                 heading_offsets[normalized_heading] = candidate_index + 1
                 matched_final_ids.add(matched_final["section_id"])
+                remaining_final_ids_by_group[group].discard(matched_final["section_id"])
                 alignments_by_proposed[proposed_section["section_id"]] = {
                     "final": matched_final,
                     "match_type": "exact_heading",
@@ -272,72 +201,66 @@ def align_sections(proposed_sections: list[dict], final_sections: list[dict]):
                 }
 
     for group in CONTENT_GROUPS:
-        unmatched_final = [
-            section
-            for section in final_by_group[group]
-            if section["section_id"] not in matched_final_ids and section["_heading_tokens"]
-        ]
         for proposed_section in [
             section
-            for section in proposed_sections
-            if section["_content_group"] == group
-            and section["section_id"] not in alignments_by_proposed
-            and section["_heading_tokens"]
+            for section in proposed_by_group[group]
+            if section["section_id"] not in alignments_by_proposed and section["_heading_tokens"]
         ]:
             best_section = None
             best_score = 0.0
-            for final_section in unmatched_final:
+            for final_section in final_by_group[group]:
+                if (
+                    final_section["section_id"] not in remaining_final_ids_by_group[group]
+                    or not final_section["_heading_tokens"]
+                ):
+                    continue
                 score = jaccard(proposed_section["_heading_tokens"], final_section["_heading_tokens"])
                 if score > best_score:
                     best_score = score
                     best_section = final_section
             if best_section is not None and best_score >= 0.5:
                 matched_final_ids.add(best_section["section_id"])
+                remaining_final_ids_by_group[group].discard(best_section["section_id"])
                 alignments_by_proposed[proposed_section["section_id"]] = {
                     "final": best_section,
                     "match_type": "fuzzy_heading",
                     "heading_similarity": round(best_score, 4),
                 }
-                unmatched_final = [section for section in unmatched_final if section["section_id"] != best_section["section_id"]]
 
     for group in CONTENT_GROUPS:
-        unmatched_final = [
-            section
-            for section in final_by_group[group]
-            if section["section_id"] not in matched_final_ids
-        ]
         for proposed_section in [
             section
-            for section in proposed_sections
-            if section["_content_group"] == group
-            and section["section_id"] not in alignments_by_proposed
-            and bool(section["_body_tokens_full"])
+            for section in proposed_by_group[group]
+            if section["section_id"] not in alignments_by_proposed and bool(section["_body_tokens_full"])
         ]:
-            assisted_match, assisted_score = _body_keyword_assist(proposed_section, unmatched_final)
+            assisted_match, assisted_score = _body_keyword_assist(
+                proposed_section,
+                final_by_group[group],
+                remaining_final_ids_by_group[group],
+            )
             if assisted_match is not None:
                 matched_final_ids.add(assisted_match["section_id"])
+                remaining_final_ids_by_group[group].discard(assisted_match["section_id"])
                 alignments_by_proposed[proposed_section["section_id"]] = {
                     "final": assisted_match,
                     "match_type": "fuzzy_heading",
                     "heading_similarity": round(assisted_score, 4),
                 }
-                unmatched_final = [section for section in unmatched_final if section["section_id"] != assisted_match["section_id"]]
 
     for group in CONTENT_GROUPS:
         unmatched_proposed = [
             section
-            for section in proposed_sections
-            if section["_content_group"] == group
-            and section["section_id"] not in alignments_by_proposed
-            and not section["_normalized_heading"]
+            for section in proposed_by_group[group]
+            if section["section_id"] not in alignments_by_proposed and not section["_normalized_heading"]
         ]
         unmatched_final = [
             section
             for section in final_by_group[group]
-            if section["section_id"] not in matched_final_ids and not section["_normalized_heading"]
+            if section["section_id"] in remaining_final_ids_by_group[group] and not section["_normalized_heading"]
         ]
         for proposed_section, final_section in zip(unmatched_proposed, unmatched_final):
             matched_final_ids.add(final_section["section_id"])
+            remaining_final_ids_by_group[group].discard(final_section["section_id"])
             alignments_by_proposed[proposed_section["section_id"]] = {
                 "final": final_section,
                 "match_type": "sequential",

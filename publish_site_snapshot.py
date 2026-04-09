@@ -1,50 +1,19 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import os
 import shutil
 from datetime import datetime, timezone
+
+from pipeline_utils import DOCKET_IDS, atomic_write_json, print_line, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "outputs")
 DEFAULT_SITE_DATA_DIR = os.path.join(ROOT_DIR, "site_data")
 
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
 def release_id_now() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
-
-
-def print_line(prefix: str, message: str) -> None:
-    print(f"[{prefix}]  {message}")
 
 
 def parse_args():
@@ -83,6 +52,11 @@ def build_index_entry(
     return {
         "docket_id": docket_id,
         "display_title": report.get("docket_title") or report.get("title") or docket_id,
+        "top_finding_title": (
+            insight_report.get("top_findings", [{}])[0].get("title")
+            if insight_report and insight_report.get("top_findings")
+            else None
+        ),
         "report_path": f"dockets/{docket_id}/report.json",
         "eval_report_path": f"dockets/{docket_id}/eval_report.json",
         "insight_report_path": f"dockets/{docket_id}/insight_report.json" if insight_report else None,
@@ -204,15 +178,19 @@ def publish_snapshot(
         validate_source_report(eval_report, docket_id, "eval_report.json")
 
         release_docket_dir = os.path.join(release_dir, "dockets", docket_id)
-        atomic_write_json(os.path.join(release_docket_dir, "report.json"), report)
-        atomic_write_json(os.path.join(release_docket_dir, "eval_report.json"), eval_report)
+        atomic_write_json(os.path.join(release_docket_dir, "report.json"), report, trailing_newline=True)
+        atomic_write_json(os.path.join(release_docket_dir, "eval_report.json"), eval_report, trailing_newline=True)
 
         insight_report_path = os.path.join(output_dir, docket_id, "insight_report.json")
         insight_report = None
         if os.path.exists(insight_report_path):
             insight_report = read_json(insight_report_path)
             validate_source_report(insight_report, docket_id, "insight_report.json")
-            atomic_write_json(os.path.join(release_docket_dir, "insight_report.json"), insight_report)
+            atomic_write_json(
+                os.path.join(release_docket_dir, "insight_report.json"),
+                insight_report,
+                trailing_newline=True,
+            )
             print("  [insight_report.json] copied")
 
         index_entries.append(build_index_entry(report, eval_report, insight_report, docket_id, published_at))
@@ -252,9 +230,13 @@ def publish_snapshot(
         "dockets": index_entries,
     }
 
-    atomic_write_json(os.path.join(release_dir, "manifest.json"), manifest)
-    atomic_write_json(os.path.join(release_dir, "release_summary.json"), release_summary)
-    atomic_write_json(os.path.join(release_dir, "dockets", "index.json"), docket_index)
+    atomic_write_json(os.path.join(release_dir, "manifest.json"), manifest, trailing_newline=True)
+    atomic_write_json(
+        os.path.join(release_dir, "release_summary.json"),
+        release_summary,
+        trailing_newline=True,
+    )
+    atomic_write_json(os.path.join(release_dir, "dockets", "index.json"), docket_index, trailing_newline=True)
     mirror_release_to_current(release_dir, current_dir)
 
     print_line("PUBLISH", f"written  {os.path.relpath(os.path.join(release_dir, 'manifest.json'), ROOT_DIR)}")

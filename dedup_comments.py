@@ -1,22 +1,17 @@
 #!/usr/bin/env python3
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import hashlib
 import json
 import os
 import re
 import zlib
 from collections import defaultdict
-import unicodedata
 
+from pipeline_utils import DOCKET_IDS, atomic_write_json, normalize_text, print_line, read_json
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
-
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
 
 # Core stopwords only are effectively kept by this script's normalization path so
 # repeated rulemaking phrases still help pull form-letter families together.
@@ -26,36 +21,6 @@ FAMILY_TYPE_ORDER = {
     "exact_duplicate": 2,
     "unique": 3,
 }
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
-
-
-# No stopword list is used here on purpose; phrase-level duplication signals are
-# stronger when common rulemaking wording is preserved during normalization.
-def normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text or "")
-    return re.sub(r"\s+", " ", text.lower()).strip()
-
-
 def char_5grams(text: str) -> set[str]:
     if len(text) < 5:
         return set()
@@ -277,11 +242,22 @@ def process_docket(docket_id: str) -> dict | None:
 
 def main():
     summaries = []
+    with ProcessPoolExecutor(max_workers=min(3, len(DOCKET_IDS))) as executor:
+        future_to_docket = {
+            executor.submit(process_docket, docket_id): docket_id
+            for docket_id in DOCKET_IDS
+        }
+        for future in as_completed(future_to_docket):
+            docket_id = future_to_docket[future]
+            try:
+                payload = future.result()
+            except Exception as exc:
+                print_line("DEDUP", docket_id, f"error: worker failed: {exc}")
+                continue
+            if payload is not None:
+                summaries.append(payload)
 
-    for docket_id in DOCKET_IDS:
-        payload = process_docket(docket_id)
-        if payload is not None:
-            summaries.append(payload)
+    summaries.sort(key=lambda payload: DOCKET_IDS.index(payload["docket_id"]))
 
     print("=== Phase 5 deduplication complete ===")
     for payload in summaries:

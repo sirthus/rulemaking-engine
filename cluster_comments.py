@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import html
 import json
 import math
 import os
 import re
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+
+from pipeline_utils import (
+    DOCKET_IDS,
+    STOPWORDS as CORE_STOPWORDS,
+    atomic_write_json,
+    normalize_text,
+    print_line,
+    read_json,
+    utc_now_iso,
+)
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
-
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
 
 COMMENTER_TYPES = [
     "individual",
@@ -30,40 +34,7 @@ COMMENTER_TYPES = [
 
 # Core + rulemaking-domain stopwords are used here so shared words like "rule",
 # "comment", and "EPA" do not dominate clustering or theme keyword extraction.
-STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "of",
-    "in",
-    "to",
-    "for",
-    "on",
-    "at",
-    "by",
-    "with",
-    "from",
-    "as",
-    "is",
-    "are",
-    "be",
-    "we",
-    "our",
-    "this",
-    "that",
-    "these",
-    "those",
-    "it",
-    "its",
-    "do",
-    "does",
-    "how",
-    "what",
-    "which",
-    "under",
-    "per",
+STOPWORDS = CORE_STOPWORDS | {
     "also",
     "have",
     "has",
@@ -181,39 +152,6 @@ COMMENTER_RULES = [
         ],
     ),
 ]
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
-
-
-def normalize_text(text: str) -> str:
-    unescaped = html.unescape(text or "")
-    without_tags = HTML_TAG_RE.sub(" ", unescaped)
-    return re.sub(r"\s+", " ", without_tags.lower()).strip()
-
-
 class UnionFind:
     def __init__(self, items: list[str]):
         self.parent = {item: item for item in items}
@@ -243,7 +181,7 @@ class UnionFind:
 
 
 def classify_commenter_type(submitter_name: str | None) -> str:
-    normalized = normalize_text(submitter_name)
+    normalized = normalize_text(submitter_name, strip_html=True)
     if not normalized:
         return "unknown"
 
@@ -342,7 +280,7 @@ def cluster_payload_for_docket(docket_id: str) -> dict | None:
             print_line("THEMES", docket_id, f"warning: canonical comment missing from comments.json: {canonical_id}")
             continue
         comment = comments_by_id[canonical_id]
-        normalized_text = normalize_text(comment.get("text") or "")
+        normalized_text = normalize_text(comment.get("text") or "", strip_html=True)
         entry = {
             "canonical_comment_id": canonical_id,
             "family_member_count": family.get("member_count", 1),
@@ -475,10 +413,22 @@ def cluster_payload_for_docket(docket_id: str) -> dict | None:
 
 def main():
     summaries = []
-    for docket_id in DOCKET_IDS:
-        payload = cluster_payload_for_docket(docket_id)
-        if payload is not None:
-            summaries.append(payload)
+    with ProcessPoolExecutor(max_workers=min(3, len(DOCKET_IDS))) as executor:
+        future_to_docket = {
+            executor.submit(cluster_payload_for_docket, docket_id): docket_id
+            for docket_id in DOCKET_IDS
+        }
+        for future in as_completed(future_to_docket):
+            docket_id = future_to_docket[future]
+            try:
+                payload = future.result()
+            except Exception as exc:
+                print_line("THEMES", docket_id, f"error: worker failed: {exc}")
+                continue
+            if payload is not None:
+                summaries.append(payload)
+
+    summaries.sort(key=lambda payload: DOCKET_IDS.index(payload["docket_id"]))
 
     print("=== Phase 6 comment clustering complete ===")
     for payload in summaries:

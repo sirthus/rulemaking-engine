@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import json
 import os
-from datetime import datetime, timezone
+
+from pipeline_utils import atomic_write_json, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -13,29 +13,6 @@ ALIGNMENT_SAMPLE_LIMIT = 25
 CLUSTER_SAMPLE_LIMIT = 25
 SNIPPET_CHARS = 600
 VALID_RELEVANCE = {"relevant", "partially_relevant", "not_relevant"}
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
 def normalize_snippet(text: str | None) -> str:
     return " ".join((text or "").split())[:SNIPPET_CHARS]
 

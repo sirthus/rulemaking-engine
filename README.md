@@ -26,14 +26,19 @@ The current product includes:
 
 - a static read-only React insight and review surface
 - the completed UI overhaul across the home, overview, priority changes, comment themes, and card detail surfaces
+- a completed refactor/performance pass across both the Python pipeline and the React app
+- shared Python pipeline helpers in `pipeline_utils.py`
+- per-docket parallelism in the dedup, change-card, and clustering stages, plus parallel Federal Register fetches
 - `generate_insights.py` and per-docket `insight_report.json`
 - published insight reports under `site_data/current/`
-- a home docket story launcher
+- a home docket story launcher with preview titles embedded in the published docket index
 - docket-level summaries, top findings, and card detail evidence drilldown
 - analyst-first card sorting, proposed/final diffs, and lower-signal card folding
 - a richer published snapshot contract with `release_summary.json`
+- a route-split React app with lazy-loaded pages, memoized review/theme selectors, and cached snapshot fetches
 - blind gold-set packet generation and validation tooling
 - Vite dev/build support for serving and packaging the published snapshot
+- removal of the old local runtime helper and earlier spike artifacts that no longer belong in the product path
 
 ## Prerequisites
 
@@ -117,6 +122,8 @@ Published snapshot contract:
 
 `report.csv`, `report.html`, raw corpus files, and operator-only manifests are intentionally excluded from the site contract.
 
+The published `dockets/index.json` now carries enough metadata for the homepage to render docket previews without eagerly fetching all three `insight_report.json` files.
+
 ## Static React Site
 
 The site lives under `site_app/`. It is a client-only V2 insight surface with:
@@ -125,6 +132,8 @@ The site lives under `site_app/`. It is a client-only V2 insight surface with:
 - no SSR requirement
 - no model calls
 - no browser editing workflow
+- route-based code splitting for the home, docket, and card-detail pages
+- immutable snapshot JSON caching inside the frontend loader
 
 The site expects a published snapshot to exist first:
 
@@ -195,14 +204,17 @@ If a docket lacks a committed gold set, evaluation writes an `eval_report.json` 
 Backend verification:
 
 ```bash
+python -m unittest test_pipeline_utils.py test_label_clusters.py test_refresh_site_snapshot.py test_comment_dedup_and_signals.py test_change_cards.py test_cluster_comments.py test_publish_site_snapshot.py -v
 python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_publish_site_snapshot.py test_docs_acceptance.py test_gold_set_workflow.py test_gold_set_consistency.py -v
+TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_generate_insights.py test_publish_site_snapshot.py test_refresh_site_snapshot.py -v
+TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_pipeline_utils.py -v
 ```
 
 Frontend verification:
 
 ```bash
 cd site_app
-npm test
+npm test -- --run src/App.test.tsx src/snapshot.test.ts
 npm run build
 ```
 
@@ -237,10 +249,10 @@ If a fresh checkout is unclear, read `PROJECT_STATUS.md` first. It is the canoni
 
 ## Roadmap
 
-The V2 insight surface and UI overhaul are complete for the current three-docket EPA scope.
+The V2 insight surface, UI overhaul, and refactor/performance pass are complete for the current three-docket EPA scope.
 
-Tomorrow's planned work is:
+The next planned work is:
 
-1. refactor the frontend and supporting code for maintainability
-2. improve performance across the site and publish flow where it matters
-3. turn the top-level `README.md` into a stronger Showpiece README for the project
+1. turn the top-level `README.md` into a stronger Showpiece README for the project
+2. audit the large stylesheet and remove dead CSS left over from the UI overhaul
+3. continue low-risk cleanup without changing the local-first/static architecture

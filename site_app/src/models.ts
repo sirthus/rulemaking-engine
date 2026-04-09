@@ -18,6 +18,7 @@ export interface LabelingSummary {
 export interface DocketIndexEntry {
   docket_id: string;
   display_title: string;
+  top_finding_title?: string | null;
   report_path: string;
   eval_report_path: string;
   insight_report_path?: string | null;

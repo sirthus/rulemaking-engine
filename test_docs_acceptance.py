@@ -11,7 +11,6 @@ CHECK_PATHS = [
     "generate_outputs.py",
     "evaluate_pipeline.py",
     "refresh_site_snapshot.py",
-    "ollama_runtime.py",
 ]
 BANNED_STRINGS = [
     "ANTHROPIC_API_KEY",

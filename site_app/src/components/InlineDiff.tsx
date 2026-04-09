@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { ChangeCard } from "../models";
 import { type DiffPiece, diffSnippets, tokenizeSnippet } from "./ChangeSnippet";
 import type { CardDisplayMetrics } from "./ChangeCardRow";
@@ -303,8 +303,11 @@ function DiffColumn({
 export function InlineDiff({ card, synopsis }: { card: ChangeCard; synopsis?: string }) {
   const [mode, setMode] = useState<DiffMode>("inline");
   const [expandedRuns, setExpandedRuns] = useState<Record<number, boolean>>({});
-  const { inlinePieces, removedPieces, addedPieces, removedGroups, addedGroups } = buildDiffSets(card);
-  const hasInlineContext = inlinePieces.some((piece) => piece.kind === "unchanged");
+  const { inlinePieces, removedPieces, addedPieces, removedGroups, addedGroups } = useMemo(
+    () => buildDiffSets(card),
+    [card.change_type, card.final_text_snippet, card.proposed_text_snippet]
+  );
+  const hasInlineContext = useMemo(() => inlinePieces.some((piece) => piece.kind === "unchanged"), [inlinePieces]);
 
   return (
     <div className="diff-viewer">

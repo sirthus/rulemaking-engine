@@ -5,18 +5,13 @@ import csv
 import html as html_module
 import json
 import os
-from datetime import datetime, timezone
+
+from pipeline_utils import DOCKET_IDS, atomic_write_json, atomic_write_text, print_line, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "outputs")
-
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
 
 CSV_COLUMNS = [
     "docket_id",
@@ -39,29 +34,6 @@ CSV_COLUMNS = [
     "evidence_note",
     "review_status",
 ]
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
 def atomic_write_csv(path: str, rows: list[dict]) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp_path = f"{path}.tmp"
@@ -76,12 +48,6 @@ def atomic_write_csv(path: str, rows: list[dict]) -> None:
                 }
             )
     os.replace(tmp_path, path)
-
-
-def print_line(prefix: str, docket_id: str, message: str) -> None:
-    print(f"[{prefix}]  {docket_id}  {message}")
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate consolidated JSON, CSV, and HTML outputs.")
     parser.add_argument("--docket", choices=DOCKET_IDS, help="Process a single docket.")

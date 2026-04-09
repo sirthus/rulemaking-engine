@@ -4,13 +4,7 @@ import argparse
 import os
 
 import gold_set_workflow
-
-
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
+from pipeline_utils import DOCKET_IDS
 
 
 def parse_args():

@@ -17,10 +17,21 @@ import re
 import sys
 import time
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 
 import requests
+
+from pipeline_utils import (
+    atomic_write_bytes,
+    atomic_write_json,
+    atomic_write_text,
+    normalize_whitespace,
+    print_line,
+    read_json,
+    utc_now_iso,
+)
 
 
 REGS_GOV_API_KEY = os.environ.get("REGULATIONS_GOV_API_KEY", "")
@@ -97,18 +108,8 @@ LAST_REGS_REQUEST_AT = None
 
 def utc_now() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def utc_now_iso() -> str:
-    return utc_now().replace(microsecond=0).isoformat()
-
-
 def local_name(tag: str) -> str:
     return tag.split("}", 1)[-1] if "}" in tag else tag
-
-
-def normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
 
 
 def cache_key_filename(key: str, extension: str) -> str:
@@ -122,36 +123,9 @@ def ensure_dirs():
         os.makedirs(path, exist_ok=True)
     for docket in MANIFEST:
         os.makedirs(os.path.join(CORPUS_DIR, docket["docket_id"]), exist_ok=True)
-
-
-def atomic_write_bytes(path: str, data: bytes):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "wb") as handle:
-        handle.write(data)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_text(path: str, text: str):
-    atomic_write_bytes(path, text.encode("utf-8"))
-
-
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
 def read_bytes(path: str) -> bytes:
     with open(path, "rb") as handle:
         return handle.read()
-
-
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
 
 
 def prepared_url(url: str, params: dict | None = None) -> str:
@@ -169,16 +143,24 @@ def sleep_for_regs_if_needed():
         time.sleep(REGS_REQUEST_DELAY - elapsed)
 
 
-def request_with_retry(url: str, *, params: dict | None = None, headers: dict | None = None, is_regs: bool = False):
+def request_with_retry(
+    url: str,
+    *,
+    params: dict | None = None,
+    headers: dict | None = None,
+    is_regs: bool = False,
+    session: requests.Session | None = None,
+):
     global LAST_REGS_REQUEST_AT
 
+    active_session = session or SESSION
     last_result = None
     for attempt in (1, 2):
         if is_regs:
             sleep_for_regs_if_needed()
         start = time.perf_counter()
         try:
-            response = SESSION.get(url, params=params, headers=headers, timeout=30)
+            response = active_session.get(url, params=params, headers=headers, timeout=30)
             duration_s = time.perf_counter() - start
         except requests.exceptions.RequestException as exc:
             duration_s = time.perf_counter() - start
@@ -252,6 +234,7 @@ def fetch_immutable_bytes(
     headers: dict | None = None,
     is_regs: bool = False,
     expected_content_substring: str | None = None,
+    session: requests.Session | None = None,
 ):
     path = os.path.join(IMMUTABLE_CACHE_DIR, cache_key_filename(url, extension))
     start = time.perf_counter()
@@ -265,7 +248,7 @@ def fetch_immutable_bytes(
             "response_headers": {},
         }
 
-    result = request_with_retry(url, headers=headers, is_regs=is_regs)
+    result = request_with_retry(url, headers=headers, is_regs=is_regs, session=session)
     if result["status"] != "ok":
         return {
             "status": result["status"],
@@ -542,7 +525,7 @@ def derive_submitter_name(title: str | None):
     return None
 
 
-def fetch_fr_role(docket: dict, role: str):
+def fetch_fr_role(docket: dict, role: str, *, session: requests.Session | None = None):
     xml_url = docket[f"{role}_xml_url"]
     html_url = docket[f"{role}_html_url"]
     fr_doc_number = docket[f"{role}_fr_doc_number"]
@@ -561,6 +544,7 @@ def fetch_fr_role(docket: dict, role: str):
             ".xml",
             is_regs=False,
             expected_content_substring="xml" if source_label == "xml" else None,
+            session=session,
         )
         attempts.append({
             "source": source_label,
@@ -632,6 +616,13 @@ def fetch_fr_role(docket: dict, role: str):
         "attempts": attempts,
         "warnings": warnings,
     }, sections
+
+
+def fetch_fr_artifacts_for_docket(docket: dict) -> tuple[dict, dict]:
+    with requests.Session() as session:
+        proposed_log, _ = fetch_fr_role(docket, "proposed", session=session)
+        final_log, _ = fetch_fr_role(docket, "final", session=session)
+    return proposed_log, final_log
 
 
 def fetch_comments_for_docket(docket: dict):
@@ -836,23 +827,31 @@ def main() -> int:
     ensure_dirs()
     summary_rows = []
     overall_passed = True
+    fr_futures = {}
 
-    for docket in MANIFEST:
-        proposed_log, _ = fetch_fr_role(docket, "proposed")
-        final_log, _ = fetch_fr_role(docket, "final")
-        comments_log, comments = fetch_comments_for_docket(docket)
-        fetch_log = write_docket_outputs(docket, proposed_log, final_log, comments_log, comments)
+    with ThreadPoolExecutor(max_workers=min(3, len(MANIFEST))) as executor:
+        for docket in MANIFEST:
+            fr_futures[docket["docket_id"]] = executor.submit(fetch_fr_artifacts_for_docket, docket)
 
-        if not fetch_log["validation"]["passed"]:
-            overall_passed = False
+        comment_results = {}
+        for docket in MANIFEST:
+            comment_results[docket["docket_id"]] = fetch_comments_for_docket(docket)
 
-        summary_rows.append({
-            "docket_id": docket["docket_id"],
-            "proposed_sections": proposed_log["sections_extracted"],
-            "final_sections": final_log["sections_extracted"],
-            "comments": comments_log["total_fetched"],
-            "substantive": comments_log["substantive_inline"],
-        })
+        for docket in MANIFEST:
+            proposed_log, final_log = fr_futures[docket["docket_id"]].result()
+            comments_log, comments = comment_results[docket["docket_id"]]
+            fetch_log = write_docket_outputs(docket, proposed_log, final_log, comments_log, comments)
+
+            if not fetch_log["validation"]["passed"]:
+                overall_passed = False
+
+            summary_rows.append({
+                "docket_id": docket["docket_id"],
+                "proposed_sections": proposed_log["sections_extracted"],
+                "final_sections": final_log["sections_extracted"],
+                "comments": comments_log["total_fetched"],
+                "substantive": comments_log["substantive_inline"],
+            })
 
     print_summary(summary_rows, overall_passed)
     return 0

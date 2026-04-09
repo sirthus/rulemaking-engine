@@ -9,6 +9,7 @@ import type {
 } from "./models";
 
 const SNAPSHOT_BASE = (import.meta.env.VITE_SNAPSHOT_BASE as string | undefined) || "/site_data/current";
+const SNAPSHOT_CACHE = new Map<string, unknown>();
 
 function assertSchemaVersion(resource: string, payload: unknown): asserts payload is { schema_version: "v1" } {
   if (!payload || typeof payload !== "object" || (payload as { schema_version?: string }).schema_version !== "v1") {
@@ -16,13 +17,19 @@ function assertSchemaVersion(resource: string, payload: unknown): asserts payloa
   }
 }
 
-async function fetchJson<T>(resourcePath: string, resourceName: string): Promise<T> {
+async function cachedFetchJson<T>(resourcePath: string, resourceName: string): Promise<T> {
+  const cacheKey = `${SNAPSHOT_BASE}/${resourcePath}`;
+  if (SNAPSHOT_CACHE.has(cacheKey)) {
+    return SNAPSHOT_CACHE.get(cacheKey) as T;
+  }
+
   const response = await fetch(`${SNAPSHOT_BASE}/${resourcePath}`);
   if (!response.ok) {
     throw new Error(`Failed to load ${resourceName}: HTTP ${response.status}`);
   }
   const payload = (await response.json()) as unknown;
   assertSchemaVersion(resourceName, payload);
+  SNAPSHOT_CACHE.set(cacheKey, payload);
   return payload as T;
 }
 
@@ -43,6 +50,7 @@ function normalizeIndexEntry(
         : typeof rawEntry.docket_id === "string"
           ? rawEntry.docket_id
           : "unknown-docket",
+    top_finding_title: typeof rawEntry.top_finding_title === "string" ? rawEntry.top_finding_title : null,
     report_path: typeof rawEntry.report_path === "string" ? rawEntry.report_path : "",
     eval_report_path: typeof rawEntry.eval_report_path === "string" ? rawEntry.eval_report_path : "",
     insight_report_path: insightReportPath,
@@ -160,30 +168,30 @@ function normalizeDocketIndex(rawIndex: Record<string, unknown>): DocketIndex {
 }
 
 export async function loadManifest(): Promise<SnapshotManifest> {
-  const payload = await fetchJson<Record<string, unknown>>("manifest.json", "manifest.json");
+  const payload = await cachedFetchJson<Record<string, unknown>>("manifest.json", "manifest.json");
   return normalizeManifest(payload);
 }
 
 export async function loadDocketIndex(): Promise<DocketIndex> {
-  const payload = await fetchJson<Record<string, unknown>>("dockets/index.json", "dockets/index.json");
+  const payload = await cachedFetchJson<Record<string, unknown>>("dockets/index.json", "dockets/index.json");
   return normalizeDocketIndex(payload);
 }
 
 export async function loadReleaseSummary(): Promise<ReleaseSummary> {
-  return fetchJson<ReleaseSummary>("release_summary.json", "release_summary.json");
+  return cachedFetchJson<ReleaseSummary>("release_summary.json", "release_summary.json");
 }
 
 export async function loadReport(docketId: string): Promise<Report> {
-  return fetchJson<Report>(`dockets/${docketId}/report.json`, `report.json for ${docketId}`);
+  return cachedFetchJson<Report>(`dockets/${docketId}/report.json`, `report.json for ${docketId}`);
 }
 
 export async function loadEvalReport(docketId: string): Promise<EvalReport> {
-  return fetchJson<EvalReport>(`dockets/${docketId}/eval_report.json`, `eval_report.json for ${docketId}`);
+  return cachedFetchJson<EvalReport>(`dockets/${docketId}/eval_report.json`, `eval_report.json for ${docketId}`);
 }
 
 export async function loadInsightReport(docketId: string): Promise<InsightReport | null> {
   try {
-    return await fetchJson<InsightReport>(
+    return await cachedFetchJson<InsightReport>(
       `dockets/${docketId}/insight_report.json`,
       `insight_report.json for ${docketId}`
     );
@@ -197,6 +205,10 @@ export function summarizeMetricBlock(metricBlock: Record<string, unknown> | unde
     return [];
   }
   return Object.entries(metricBlock).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
+}
+
+export function clearSnapshotCache(): void {
+  SNAPSHOT_CACHE.clear();
 }
 
 export { SNAPSHOT_BASE, assertSchemaVersion };
