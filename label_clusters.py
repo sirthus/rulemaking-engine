@@ -5,29 +5,42 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timezone
 
 import requests
 
-import ollama_runtime
+from pipeline_utils import DOCKET_IDS, atomic_write_json, print_line, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
 
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
-
 DEFAULT_MODEL = "qwen3:14b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 DEFAULT_NUM_PREDICT = 1024
 DEFAULT_TIMEOUT_SECONDS = 180
+PREFLIGHT_TIMEOUT_SECONDS = 30
 PROMPT_VERSION = "v1"
 MAX_EXCERPTS = 3
 MAX_EXCERPT_CHARS = 400
+
+SUPPORTED_MODEL_PROFILES = {
+    "qwen3:14b": {
+        "model": "qwen3:14b",
+        "display_name": "Qwen 3 14B",
+        "purpose": "Accuracy-first local labeling baseline",
+        "recommended_no_think": True,
+        "status": "supported",
+        "warning": None,
+    },
+    "gemma3:12b-it-q8_0": {
+        "model": "gemma3:12b-it-q8_0",
+        "display_name": "Gemma 3 12B Instruct Q8",
+        "purpose": "Speed-first local labeling alternative",
+        "recommended_no_think": False,
+        "status": "supported",
+        "warning": None,
+    },
+}
 
 SYSTEM_PROMPT = """You are analyzing public comments submitted to an EPA rulemaking docket.
 Given a cluster of related comments described by keywords, commenter types, and
@@ -104,29 +117,134 @@ class OllamaClient:
         return payload
 
 
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+def resolve_model_profile(model: str | None) -> dict:
+    normalized = (model or "").strip()
+    if normalized in SUPPORTED_MODEL_PROFILES:
+        profile = dict(SUPPORTED_MODEL_PROFILES[normalized])
+        profile["supported"] = True
+        return profile
+
+    return {
+        "model": normalized,
+        "display_name": normalized or "Unknown model",
+        "purpose": "Custom or experimental local model",
+        "recommended_no_think": False,
+        "status": "experimental",
+        "warning": (
+            "This model is not in the validated local profile list. "
+            "Proceed only if you have validated it locally."
+        ),
+        "supported": False,
+    }
 
 
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
+def _extract_model_names(tags_payload: dict) -> list[str]:
+    if not isinstance(tags_payload, dict):
+        raise RuntimeError("Ollama /api/tags returned an unexpected payload.")
+
+    models = tags_payload.get("models")
+    if not isinstance(models, list):
+        raise RuntimeError("Ollama /api/tags did not include a models list.")
+
+    names = []
+    for model_entry in models:
+        if not isinstance(model_entry, dict):
+            continue
+        for key in ("model", "name"):
+            value = model_entry.get(key)
+            if isinstance(value, str) and value.strip():
+                names.append(value.strip())
+                break
+    return sorted(set(names))
 
 
-def atomic_write_text(path: str, text: str):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
+def run_preflight(
+    ollama_url: str,
+    model: str,
+    session: requests.Session | None = None,
+    timeout_seconds: int = PREFLIGHT_TIMEOUT_SECONDS,
+) -> dict:
+    resolved_url = (ollama_url or DEFAULT_OLLAMA_URL).rstrip("/")
+    resolved_model = (model or "").strip()
+    profile = resolve_model_profile(resolved_model)
+    active_session = session or requests.Session()
+    endpoint = f"{resolved_url}/api/tags"
+
+    try:
+        response = active_session.get(endpoint, timeout=timeout_seconds)
+    except requests.exceptions.Timeout as exc:
+        raise RuntimeError(
+            f"Ollama preflight timed out at {resolved_url}. Check whether the daemon is running."
+        ) from exc
+    except requests.exceptions.ConnectionError as exc:
+        raise RuntimeError(
+            f"Could not reach Ollama at {resolved_url}. Start `ollama serve` and try again."
+        ) from exc
+    except requests.RequestException as exc:
+        raise RuntimeError(f"Ollama preflight failed: {exc}") from exc
+
+    if response.status_code != 200:
+        detail = response.text.strip()
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and payload.get("error"):
+            detail = str(payload["error"])
+        raise RuntimeError(f"Ollama preflight returned HTTP {response.status_code}: {detail}")
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise RuntimeError("Ollama preflight returned malformed JSON from /api/tags.") from exc
+
+    installed_models = _extract_model_names(payload)
+    if resolved_model and resolved_model not in installed_models:
+        raise RuntimeError(
+            f"Model `{resolved_model}` is not installed in Ollama. Run `ollama pull {resolved_model}` first."
+        )
+
+    warnings = []
+    if profile.get("warning"):
+        warnings.append(profile["warning"])
+
+    return {
+        "ollama_url": resolved_url,
+        "model": resolved_model,
+        "profile": profile,
+        "installed_models": installed_models,
+        "installed_model_count": len(installed_models),
+        "reachable": True,
+        "warnings": warnings,
+    }
 
 
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
+def preflight_summary_lines(preflight: dict) -> list[str]:
+    profile = preflight["profile"]
+    lines = [
+        f"Ollama reachable at {preflight['ollama_url']}",
+        f"Model: {preflight['model']} ({profile['status']})",
+        f"Profile: {profile['purpose']}",
+        f"Recommended no_think: {bool(profile.get('recommended_no_think'))}",
+        f"Installed models detected: {preflight.get('installed_model_count', 0)}",
+    ]
+    for warning in preflight.get("warnings", []):
+        lines.append(f"Warning: {warning}")
+    return lines
 
 
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
+def profile_for_manifest(profile: dict | None) -> dict | None:
+    if not isinstance(profile, dict):
+        return None
+    return {
+        "model": profile.get("model"),
+        "display_name": profile.get("display_name"),
+        "purpose": profile.get("purpose"),
+        "recommended_no_think": bool(profile.get("recommended_no_think")),
+        "status": profile.get("status"),
+        "warning": profile.get("warning"),
+        "supported": bool(profile.get("supported")),
+    }
 
 
 def parse_args():
@@ -385,7 +503,7 @@ def build_processing_run(
         "runtime": "ollama",
         "docket_id": docket_id,
         "model": model,
-        "model_profile": ollama_runtime.profile_for_manifest(model_profile),
+        "model_profile": profile_for_manifest(model_profile),
         "prompt_version": PROMPT_VERSION,
         "ollama_url": client.ollama_url,
         "no_think": no_think,
@@ -490,7 +608,7 @@ def process_docket(
         docket_id,
         client,
         model,
-        model_profile or ollama_runtime.resolve_model_profile(model),
+        model_profile or resolve_model_profile(model),
         no_think,
         started_at,
         completed_at,
@@ -536,9 +654,7 @@ def process_docket(
         "output_tokens": total_output_tokens,
         "total_duration_ms": round(total_duration_ms, 1),
         "wall_clock_ms": round(wall_clock_ms, 1),
-        "model_profile": ollama_runtime.profile_for_manifest(
-            model_profile or ollama_runtime.resolve_model_profile(model)
-        ),
+        "model_profile": profile_for_manifest(model_profile or resolve_model_profile(model)),
     }
 
 
@@ -546,14 +662,14 @@ def main():
     args = parse_args()
     docket_ids = [args.docket] if args.docket else DOCKET_IDS
     client = OllamaClient(args.ollama_url)
-    preflight = ollama_runtime.run_preflight(
+    preflight = run_preflight(
         args.ollama_url,
         args.model,
         session=getattr(client, "session", None),
-        timeout_seconds=getattr(client, "timeout_seconds", ollama_runtime.DEFAULT_TIMEOUT_SECONDS),
+        timeout_seconds=PREFLIGHT_TIMEOUT_SECONDS,
     )
     model_profile = preflight["profile"]
-    for line in ollama_runtime.preflight_summary_lines(preflight):
+    for line in preflight_summary_lines(preflight):
         print(f"[PREFLIGHT]  {line}")
 
     summaries = []

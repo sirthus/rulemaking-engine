@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import type { ChangeCard } from "../models";
 
 export interface DiffPiece {
@@ -91,6 +91,12 @@ export function ChangeSnippet({
   const final = card.final_text_snippet || "";
   const changeType = (card.change_type || "").toLowerCase();
   const className = `diff-text${preview ? " snippet-preview" : ""}`;
+  const diff = useMemo(() => diffSnippets(proposed, final), [proposed, final]);
+  const addedPieces = useMemo(() => tokenizeSnippet(final).map((text) => ({ text, kind: "added" as const })), [final]);
+  const removedPieces = useMemo(
+    () => tokenizeSnippet(proposed).map((text) => ({ text, kind: "removed" as const })),
+    [proposed]
+  );
 
   if (changeType === "added" && side === "proposed" && !proposed.trim()) {
     return <p className="meta-line">No proposed text in this card</p>;
@@ -106,14 +112,10 @@ export function ChangeSnippet({
   }
 
   if (changeType === "added" && side === "final") {
-    const addedPieces: DiffPiece[] = tokenizeSnippet(final).map((text) => ({ text, kind: "added" }));
     return <p className={className}>{renderDiffPieces(addedPieces)}</p>;
   }
   if (changeType === "removed" && side === "proposed") {
-    const removedPieces: DiffPiece[] = tokenizeSnippet(proposed).map((text) => ({ text, kind: "removed" }));
     return <p className={className}>{renderDiffPieces(removedPieces)}</p>;
   }
-
-  const diff = diffSnippets(proposed, final);
   return <p className={className}>{renderDiffPieces(side === "proposed" ? diff.proposed : diff.final)}</p>;
 }

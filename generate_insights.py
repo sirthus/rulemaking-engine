@@ -4,17 +4,12 @@ import argparse
 import json
 import os
 import re
-from datetime import datetime, timezone
+
+from pipeline_utils import DOCKET_IDS, atomic_write_json, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "outputs")
-
-DOCKETS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
 
 BANNED_CAUSAL_REPLACEMENTS = {
     "caused": "associated with",
@@ -40,32 +35,9 @@ BANNED_CAUSAL_PATTERN = re.compile(
 
 class InsightGenerationError(Exception):
     pass
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2) + "\n")
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description="Generate deterministic insight reports from output artifacts.")
-    parser.add_argument("--docket", choices=DOCKETS, help="Process a single docket.")
+    parser.add_argument("--docket", choices=DOCKET_IDS, help="Process a single docket.")
     parser.add_argument(
         "--output-dir",
         default=DEFAULT_OUTPUT_DIR,
@@ -508,7 +480,7 @@ def process_docket(docket_id: str, output_dir: str) -> dict:
         source_eval_report=relative_display_path(eval_report_path),
     )
 
-    atomic_write_json(insight_report_path, insight_report)
+    atomic_write_json(insight_report_path, insight_report, trailing_newline=True)
     print(
         f"[{docket_id}] insight_report.json written "
         f"({len(insight_report['top_findings'])} findings, "
@@ -520,7 +492,7 @@ def process_docket(docket_id: str, output_dir: str) -> dict:
 def main() -> int:
     args = parse_args()
     output_dir = os.path.abspath(args.output_dir)
-    docket_ids = [args.docket] if args.docket else DOCKETS
+    docket_ids = [args.docket] if args.docket else DOCKET_IDS
 
     failures = 0
     for docket_id in docket_ids:

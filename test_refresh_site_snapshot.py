@@ -17,7 +17,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         self.original_eval_process = refresh_site_snapshot.evaluate_pipeline.process_docket
         self.original_insight_process = refresh_site_snapshot.generate_insights.process_docket
         self.original_publish = refresh_site_snapshot.publish_site_snapshot.publish_snapshot
-        self.original_preflight = refresh_site_snapshot.ollama_runtime.run_preflight
+        self.original_preflight = refresh_site_snapshot.label_clusters.run_preflight
         self.addCleanup(self.restore_globals)
 
     def restore_globals(self):
@@ -27,7 +27,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
         refresh_site_snapshot.evaluate_pipeline.process_docket = self.original_eval_process
         refresh_site_snapshot.generate_insights.process_docket = self.original_insight_process
         refresh_site_snapshot.publish_site_snapshot.publish_snapshot = self.original_publish
-        refresh_site_snapshot.ollama_runtime.run_preflight = self.original_preflight
+        refresh_site_snapshot.label_clusters.run_preflight = self.original_preflight
 
     def test_run_refresh_uses_no_think_for_qwen_and_publishes(self):
         calls = []
@@ -37,7 +37,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
                 self.ollama_url = ollama_url
 
         refresh_site_snapshot.label_clusters.OllamaClient = _FakeClient
-        refresh_site_snapshot.ollama_runtime.run_preflight = lambda *args, **kwargs: {
+        refresh_site_snapshot.label_clusters.run_preflight = lambda *args, **kwargs: {
             "ollama_url": "http://localhost:11434",
             "model": "qwen3:14b",
             "profile": {
@@ -105,7 +105,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
                 self.ollama_url = ollama_url
 
         refresh_site_snapshot.label_clusters.OllamaClient = _FakeClient
-        refresh_site_snapshot.ollama_runtime.run_preflight = lambda *args, **kwargs: {
+        refresh_site_snapshot.label_clusters.run_preflight = lambda *args, **kwargs: {
             "ollama_url": "http://localhost:11434",
             "model": "gemma3:12b-it-q8_0",
             "profile": {
@@ -188,7 +188,7 @@ class RefreshSiteSnapshotTests(unittest.TestCase):
                 self.ollama_url = ollama_url
 
         refresh_site_snapshot.label_clusters.OllamaClient = _FakeClient
-        refresh_site_snapshot.ollama_runtime.run_preflight = lambda *args, **kwargs: {
+        refresh_site_snapshot.label_clusters.run_preflight = lambda *args, **kwargs: {
             "ollama_url": "http://localhost:11434",
             "model": "qwen3:14b",
             "profile": {

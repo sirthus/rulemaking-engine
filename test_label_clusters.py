@@ -26,6 +26,12 @@ class _FakeSession:
         self.error = error
         self.calls = []
 
+    def get(self, url, timeout=None):
+        self.calls.append({"url": url, "timeout": timeout})
+        if self.error is not None:
+            raise self.error
+        return self.responses.pop(0)
+
     def post(self, url, json=None, timeout=None):
         self.calls.append({"url": url, "json": json, "timeout": timeout})
         if self.error is not None:
@@ -125,6 +131,61 @@ class LabelClustersTests(unittest.TestCase):
         )
 
         self.assertEqual(raw_text, '{"label":"Visible","description":"Shown."}')
+
+    def test_resolve_supported_profile(self):
+        profile = label_clusters.resolve_model_profile("qwen3:14b")
+        self.assertTrue(profile["supported"])
+        self.assertTrue(profile["recommended_no_think"])
+
+    def test_resolve_unknown_profile_is_experimental(self):
+        profile = label_clusters.resolve_model_profile("custom-model")
+        self.assertFalse(profile["supported"])
+        self.assertEqual(profile["status"], "experimental")
+
+    def test_run_preflight_success(self):
+        session = _FakeSession(
+            responses=[
+                _FakeResponse(
+                    payload={"models": [{"model": "qwen3:14b"}, {"name": "gemma3:12b-it-q8_0"}]}
+                )
+            ]
+        )
+
+        result = label_clusters.run_preflight(
+            "http://localhost:11434/",
+            "qwen3:14b",
+            session=session,
+            timeout_seconds=12,
+        )
+
+        self.assertEqual(result["ollama_url"], "http://localhost:11434")
+        self.assertEqual(result["profile"]["display_name"], "Qwen 3 14B")
+        self.assertEqual(session.calls[0]["url"], "http://localhost:11434/api/tags")
+        self.assertEqual(session.calls[0]["timeout"], 12)
+
+    def test_run_preflight_missing_model(self):
+        session = _FakeSession(responses=[_FakeResponse(payload={"models": [{"model": "gemma3:12b-it-q8_0"}]})])
+
+        with self.assertRaisesRegex(RuntimeError, "ollama pull qwen3:14b"):
+            label_clusters.run_preflight("http://localhost:11434", "qwen3:14b", session=session)
+
+    def test_run_preflight_connection_error(self):
+        session = _FakeSession(error=requests.exceptions.ConnectionError("boom"))
+
+        with self.assertRaisesRegex(RuntimeError, "Could not reach Ollama"):
+            label_clusters.run_preflight("http://localhost:11434", "qwen3:14b", session=session)
+
+    def test_run_preflight_timeout(self):
+        session = _FakeSession(error=requests.exceptions.Timeout("boom"))
+
+        with self.assertRaisesRegex(RuntimeError, "timed out"):
+            label_clusters.run_preflight("http://localhost:11434", "qwen3:14b", session=session)
+
+    def test_run_preflight_malformed_json(self):
+        session = _FakeSession(responses=[_FakeResponse(payload=ValueError("bad json"))])
+
+        with self.assertRaisesRegex(RuntimeError, "malformed JSON"):
+            label_clusters.run_preflight("http://localhost:11434", "qwen3:14b", session=session)
 
     def test_label_cluster_retries_with_no_think_and_parses_fenced_json(self):
         client = _FakeClient(

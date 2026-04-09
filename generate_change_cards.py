@@ -1,109 +1,31 @@
 #!/usr/bin/env python3
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import json
 import os
 import re
 import unicodedata
 from collections import defaultdict
 
+from pipeline_utils import (
+    DOCKET_IDS,
+    STOPWORDS,
+    atomic_write_json,
+    atomic_write_text,
+    normalize_heading,
+    normalize_text,
+    normalize_whitespace,
+    print_line,
+    read_json,
+)
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
 
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
-
-# Core + rulemaking-domain stopwords are used here because heading/comment
-# similarity should ignore universal rulemaking vocabulary and focus on issue terms.
-STOPWORDS = {
-    "a",
-    "an",
-    "the",
-    "and",
-    "or",
-    "of",
-    "in",
-    "to",
-    "for",
-    "on",
-    "at",
-    "by",
-    "with",
-    "from",
-    "as",
-    "is",
-    "are",
-    "be",
-    "we",
-    "our",
-    "this",
-    "that",
-    "these",
-    "those",
-    "it",
-    "its",
-    "do",
-    "does",
-    "how",
-    "what",
-    "which",
-    "under",
-    "per",
-}
-
 CFR_SECTION_SIGN_RE = re.compile(r"(?:§|\xa7|&#167;|&sect;)\s*(\d+\.\d+)", re.IGNORECASE)
 PLAIN_CFR_RE = re.compile(r"\bsection\s+(\d{2,}\.\d+)\b", re.IGNORECASE)
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload):
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def print_line(prefix: str, docket_id: str, message: str):
-    print(f"[{prefix}]  {docket_id}  {message}")
-
-
-def normalize_whitespace(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip()
-
-
-def normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text or "")
-    return normalize_whitespace(text.lower())
-
-
-def strip_outline_prefix(heading: str) -> str:
-    original_heading = unicodedata.normalize("NFKC", heading or "").strip()
-    if original_heading.startswith("§") or re.match(r"^\d{2,}\.\d+\b", original_heading):
-        return original_heading
-    return re.sub(r"^(?:[IVXivx]+|[A-Za-z]|\d)\.\s+", "", original_heading)
-
-
-def normalize_heading(heading: str) -> str:
-    heading = normalize_text(strip_outline_prefix(heading))
-    heading = heading.replace("§", " ")
-    heading = re.sub(r"[^a-z0-9\s]+", " ", heading)
-    return normalize_whitespace(heading)
-
-
 def heading_tokens(heading: str) -> set[str]:
-    normalized = normalize_heading(heading)
+    normalized = normalize_heading(heading, strip_outline_prefix=True)
     return {
         token
         for token in normalized.split()
@@ -681,49 +603,71 @@ def render_report(cards: list[dict], docket_summaries: list[tuple[str, dict]]) -
     return "\n".join(report_parts) + "\n"
 
 
+def process_docket(docket_id: str) -> dict | None:
+    base_dir = os.path.join(CORPUS_DIR, docket_id)
+    json_path = os.path.join(base_dir, "change_cards.json")
+
+    try:
+        print_line("CARDS", docket_id, "loading inputs...")
+        cards, summary, stats = generate_cards_for_docket(docket_id)
+        print_line(
+            "CARDS",
+            docket_id,
+            f"{stats['alignment_records']} alignment records -> {stats['changed_sections']} changed sections",
+        )
+        print_line(
+            "CARDS",
+            docket_id,
+            f"{stats['substantive_inline_records']} attribution records (substantive inline)",
+        )
+        print_line(
+            "CARDS",
+            docket_id,
+            f"indexing {stats['preamble_sections_indexed']} preamble sections for linkage...",
+        )
+        print_line(
+            "CARDS",
+            docket_id,
+            f"generated {len(cards)} change cards ({summary['commented']} commented, {summary['preamble_linked']} preamble-linked)",
+        )
+        atomic_write_json(json_path, cards)
+        print_line("CARDS", docket_id, f"written  {os.path.relpath(json_path, ROOT_DIR)}")
+        return {
+            "docket_id": docket_id,
+            "base_dir": base_dir,
+            "cards": cards,
+            "summary": summary,
+        }
+    except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
+        path = getattr(exc, "filename", None) or str(exc)
+        print_line("CARDS", docket_id, f"error: skipping docket due to file I/O problem: {path}")
+        return None
+
+
 def main():
     docket_outputs = []
-    docket_summaries = []
+    with ProcessPoolExecutor(max_workers=min(3, len(DOCKET_IDS))) as executor:
+        future_to_docket = {
+            executor.submit(process_docket, docket_id): docket_id
+            for docket_id in DOCKET_IDS
+        }
+        for future in as_completed(future_to_docket):
+            docket_id = future_to_docket[future]
+            try:
+                result = future.result()
+            except Exception as exc:
+                print_line("CARDS", docket_id, f"error: worker failed: {exc}")
+                continue
+            if result is not None:
+                docket_outputs.append(result)
 
-    for docket_id in DOCKET_IDS:
-        base_dir = os.path.join(CORPUS_DIR, docket_id)
-        json_path = os.path.join(base_dir, "change_cards.json")
-        report_path = os.path.join(base_dir, "change_cards_report.txt")
+    docket_outputs.sort(key=lambda item: DOCKET_IDS.index(item["docket_id"]))
+    docket_summaries = [(item["docket_id"], item["summary"]) for item in docket_outputs]
 
-        try:
-            print_line("CARDS", docket_id, "loading inputs...")
-            cards, summary, stats = generate_cards_for_docket(docket_id)
-            print_line(
-                "CARDS",
-                docket_id,
-                f"{stats['alignment_records']} alignment records -> {stats['changed_sections']} changed sections",
-            )
-            print_line(
-                "CARDS",
-                docket_id,
-                f"{stats['substantive_inline_records']} attribution records (substantive inline)",
-            )
-            print_line(
-                "CARDS",
-                docket_id,
-                f"indexing {stats['preamble_sections_indexed']} preamble sections for linkage...",
-            )
-            print_line(
-                "CARDS",
-                docket_id,
-                f"generated {len(cards)} change cards ({summary['commented']} commented, {summary['preamble_linked']} preamble-linked)",
-            )
-
-            atomic_write_json(json_path, cards)
-            docket_outputs.append((docket_id, base_dir, cards))
-            docket_summaries.append((docket_id, summary))
-            print_line("CARDS", docket_id, f"written  {os.path.relpath(json_path, ROOT_DIR)}")
-        except (FileNotFoundError, OSError, json.JSONDecodeError) as exc:
-            path = getattr(exc, "filename", None) or str(exc)
-            print_line("CARDS", docket_id, f"error: skipping docket due to file I/O problem: {path}")
-            continue
-
-    for _docket_id, base_dir, cards in docket_outputs:
+    for docket_output in docket_outputs:
+        _docket_id = docket_output["docket_id"]
+        base_dir = docket_output["base_dir"]
+        cards = docket_output["cards"]
         report_path = os.path.join(base_dir, "change_cards_report.txt")
         try:
             atomic_write_text(report_path, render_report(cards, docket_summaries))

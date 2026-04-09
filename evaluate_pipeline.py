@@ -3,47 +3,15 @@
 import argparse
 import json
 import os
-from datetime import datetime, timezone
 
 import gold_set_workflow
+from pipeline_utils import DOCKET_IDS, atomic_write_json, atomic_write_text, print_line, read_json, utc_now_iso
 
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 CORPUS_DIR = os.path.join(ROOT_DIR, "corpus")
 DEFAULT_GOLD_DIR = os.path.join(ROOT_DIR, "gold_set")
 DEFAULT_OUTPUT_DIR = os.path.join(ROOT_DIR, "outputs")
-
-DOCKET_IDS = [
-    "EPA-HQ-OAR-2020-0272",
-    "EPA-HQ-OAR-2018-0225",
-    "EPA-HQ-OAR-2020-0430",
-]
-
-
-def utc_now_iso() -> str:
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
-
-
-def read_json(path: str):
-    with open(path, "r", encoding="utf-8") as handle:
-        return json.load(handle)
-
-
-def atomic_write_text(path: str, text: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    tmp_path = f"{path}.tmp"
-    with open(tmp_path, "w", encoding="utf-8") as handle:
-        handle.write(text)
-    os.replace(tmp_path, path)
-
-
-def atomic_write_json(path: str, payload) -> None:
-    atomic_write_text(path, json.dumps(payload, indent=2))
-
-
-def print_line(prefix: str, docket_id: str, message: str) -> None:
-    print(f"[{prefix}]  {docket_id}  {message}")
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Evaluate pipeline output against seed gold sets.")

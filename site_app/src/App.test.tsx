@@ -67,6 +67,7 @@ describe("App routes", () => {
         {
           docket_id: "EPA-HQ-OAR-2020-0430",
           display_title: "EPA-HQ-OAR-2020-0430",
+          top_finding_title: "Home Top Theme",
           report_path: "dockets/EPA-HQ-OAR-2020-0430/report.json",
           eval_report_path: "dockets/EPA-HQ-OAR-2020-0430/eval_report.json",
           insight_report_path: "dockets/EPA-HQ-OAR-2020-0430/insight_report.json",
@@ -84,41 +85,6 @@ describe("App routes", () => {
         },
       ],
     });
-    snapshotMocks.loadInsightReport.mockResolvedValue({
-      schema_version: "v1",
-      docket_id: "EPA-HQ-OAR-2020-0430",
-      generated_at: "2026-04-07T12:00:00+00:00",
-      generator: "generate_insights.py",
-      executive_summary: "Home executive summary.",
-      top_findings: [
-        {
-          finding_id: "finding-001",
-          title: "Home Top Theme",
-          summary: "Home top finding summary.",
-          why_it_matters: "Home top finding matters.",
-          evidence_note: "Home evidence note.",
-          card_ids: ["card-1"],
-          cluster_ids: ["cluster-1"],
-        },
-      ],
-      rule_story: {
-        what_changed: "Home change story.",
-        what_commenters_emphasized: "Home commenter theme.",
-        where_final_text_aligned: "Home alignment headline.",
-        caveats: "Alignment signals indicate co-occurrence, not causation.",
-      },
-      priority_cards: [],
-      provenance: {
-        source_report: "outputs/EPA-HQ-OAR-2020-0430/report.json",
-        source_eval_report: null,
-        eval_available: false,
-        report_schema_version: "v1",
-        card_count: 1,
-        cluster_count: 1,
-        finding_count: 1,
-      },
-    });
-
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -169,6 +135,7 @@ describe("App routes", () => {
         {
           docket_id: "EPA-HQ-OAR-2020-0430",
           display_title: "EPA-HQ-OAR-2020-0430",
+          top_finding_title: null,
           report_path: "dockets/EPA-HQ-OAR-2020-0430/report.json",
           eval_report_path: "dockets/EPA-HQ-OAR-2020-0430/eval_report.json",
           insight_report_path: null,
@@ -201,7 +168,7 @@ describe("App routes", () => {
     expect(screen.queryByText(/Open docket story/i)).toBeNull();
   });
 
-  it("renders the landing page while an insight preview is loading", async () => {
+  it("renders the landing page without a preview title when the docket index omits it", async () => {
     snapshotMocks.loadManifest.mockResolvedValue({
       schema_version: "v1",
       snapshot: {
@@ -227,6 +194,7 @@ describe("App routes", () => {
         {
           docket_id: "EPA-HQ-OAR-2020-0430",
           display_title: "EPA-HQ-OAR-2020-0430",
+          top_finding_title: null,
           report_path: "dockets/EPA-HQ-OAR-2020-0430/report.json",
           eval_report_path: "dockets/EPA-HQ-OAR-2020-0430/eval_report.json",
           insight_report_path: "dockets/EPA-HQ-OAR-2020-0430/insight_report.json",
@@ -244,8 +212,6 @@ describe("App routes", () => {
         },
       ],
     });
-    snapshotMocks.loadInsightReport.mockReturnValue(new Promise(() => {}));
-
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -253,7 +219,7 @@ describe("App routes", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Choose a docket", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByText("Loading...")).toBeInTheDocument();
+    expect(await screen.findByText("No insight preview")).toBeInTheDocument();
     expect(
       await screen.findByRole("link", { name: /Open Primary Copper Smelting NESHAP Reviews/i })
     ).toHaveAttribute("href", "/dockets/EPA-HQ-OAR-2020-0430");

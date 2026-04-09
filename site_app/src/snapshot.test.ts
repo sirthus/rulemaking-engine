@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   assertSchemaVersion,
+  clearSnapshotCache,
   loadDocketIndex,
   loadInsightReport,
   loadManifest,
@@ -8,6 +9,11 @@ import {
 } from "./snapshot";
 
 describe("snapshot schema guard", () => {
+  beforeEach(() => {
+    clearSnapshotCache();
+    vi.restoreAllMocks();
+  });
+
   it("accepts v1 payloads", () => {
     expect(() => assertSchemaVersion("manifest.json", { schema_version: "v1" })).not.toThrow();
   });
@@ -170,5 +176,30 @@ describe("snapshot schema guard", () => {
     expect(summary.insights.available).toBe(3);
     expect(summary.labeling.models).toEqual(["qwen3:14b"]);
     fetchMock.mockRestore();
+  });
+
+  it("caches repeated snapshot fetches by resource path", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        schema_version: "v1",
+        release_id: "20260408T120000Z",
+        published_at: "2026-04-08T12:00:00+00:00",
+        docket_count: 3,
+        docket_ids: ["EPA-HQ-OAR-2018-0225", "EPA-HQ-OAR-2020-0272", "EPA-HQ-OAR-2020-0430"],
+        evaluation: { available: 2, not_available: 1 },
+        insights: { available: 3, not_available: 0 },
+        labeling: {
+          models: ["qwen3:14b"],
+          total_input_tokens: 1200,
+          total_output_tokens: 340,
+        },
+      }),
+    } as Response);
+
+    await loadReleaseSummary();
+    await loadReleaseSummary();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
