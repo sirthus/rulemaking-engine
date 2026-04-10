@@ -189,22 +189,80 @@ export async function loadEvalReport(docketId: string): Promise<EvalReport> {
   return cachedFetchJson<EvalReport>(`dockets/${docketId}/eval_report.json`, `eval_report.json for ${docketId}`);
 }
 
-export async function loadInsightReport(docketId: string): Promise<InsightReport | null> {
+async function loadInsightReportResource(resourcePath: string, resourceName: string): Promise<InsightReport | null> {
   try {
-    return await cachedFetchJson<InsightReport>(
-      `dockets/${docketId}/insight_report.json`,
-      `insight_report.json for ${docketId}`
-    );
+    return await cachedFetchJson<InsightReport>(resourcePath, resourceName);
   } catch {
     return null;
   }
+}
+
+export async function loadInsightReport(docketId: string): Promise<InsightReport | null> {
+  return loadInsightReportResource(`dockets/${docketId}/insight_report.json`, `insight_report.json for ${docketId}`);
+}
+
+export async function loadInsightPreviewTitles(dockets: DocketIndexEntry[]): Promise<Record<string, string>> {
+  const previewEntries = await Promise.all(
+    dockets
+      .filter((docket) => !docket.top_finding_title && docket.insight_available && docket.insight_report_path)
+      .map(async (docket) => {
+        const insightReport = await loadInsightReportResource(
+          docket.insight_report_path!,
+          `insight_report.json for ${docket.docket_id}`
+        );
+        const previewTitle = insightReport?.top_findings?.[0]?.title;
+        return typeof previewTitle === "string" && previewTitle.trim()
+          ? ([docket.docket_id, previewTitle] as const)
+          : null;
+      })
+  );
+
+  return Object.fromEntries(previewEntries.filter((entry): entry is readonly [string, string] => Boolean(entry)));
+}
+
+function formatMetricScalar(value: string | number | boolean): string {
+  if (typeof value === "number") {
+    if (Number.isInteger(value)) {
+      return value.toString();
+    }
+    return value.toFixed(2).replace(/\.?0+$/, "");
+  }
+  return String(value);
+}
+
+function formatMetricValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "n/a";
+  }
+
+  if (Array.isArray(value)) {
+    return value.length ? value.map((entry) => formatMetricValue(entry)).join(", ") : "none";
+  }
+
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (
+      typeof record.matched === "number" &&
+      typeof record.total === "number" &&
+      typeof record.pct === "number"
+    ) {
+      return `${record.matched}/${record.total} matched (${formatMetricScalar(record.pct)}%)`;
+    }
+
+    const entries = Object.entries(record);
+    return entries.length
+      ? entries.map(([key, entryValue]) => `${key}=${formatMetricValue(entryValue)}`).join(", ")
+      : "n/a";
+  }
+
+  return formatMetricScalar(value);
 }
 
 export function summarizeMetricBlock(metricBlock: Record<string, unknown> | undefined): string[] {
   if (!metricBlock) {
     return [];
   }
-  return Object.entries(metricBlock).map(([key, value]) => `${key}: ${JSON.stringify(value)}`);
+  return Object.entries(metricBlock).map(([key, value]) => `${key}: ${formatMetricValue(value)}`);
 }
 
 export function clearSnapshotCache(): void {

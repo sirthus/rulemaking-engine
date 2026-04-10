@@ -8,7 +8,7 @@ import {
   sizeChipClass,
 } from "./ChangeCardRow";
 import { CardInsightPanel, getCardInsightContext } from "./CardInsightPanel";
-import { cardChangeSynopsis, InlineDiff } from "./InlineDiff";
+import { cardChangeSynopsis, diffModeToSearchParam, type DiffMode, InlineDiff } from "./InlineDiff";
 import { WhyFlagged } from "./WhyFlagged";
 
 interface ChangeDetailPaneProps {
@@ -16,6 +16,9 @@ interface ChangeDetailPaneProps {
   metrics: CardDisplayMetrics;
   insightReport: InsightReport | null;
   docketId: string;
+  diffMode: DiffMode;
+  onDiffModeChange: (mode: DiffMode) => void;
+  onClose: () => void;
 }
 
 function copyCardReference(card: ChangeCard) {
@@ -27,10 +30,22 @@ function copyCardReference(card: ChangeCard) {
 }
 
 export const ChangeDetailPane = memo(
-  function ChangeDetailPane({ card, metrics, insightReport, docketId }: ChangeDetailPaneProps) {
+  function ChangeDetailPane({
+    card,
+    metrics,
+    insightReport,
+    docketId,
+    diffMode,
+    onDiffModeChange,
+    onClose,
+  }: ChangeDetailPaneProps) {
     const { priorityCard, linkedFindings, hasStalePriorityFindings } = getCardInsightContext(insightReport, card.card_id);
     const changeLabel = changeTypeLabel(card.change_type);
     const synopsis = cardChangeSynopsis(card, metrics);
+    const diffModeParam = diffModeToSearchParam(diffMode);
+    const fullViewPath = diffModeParam
+      ? `/dockets/${docketId}/cards/${card.card_id}?diffMode=${diffModeParam}`
+      : `/dockets/${docketId}/cards/${card.card_id}`;
 
     return (
       <div className="detail-pane">
@@ -42,10 +57,19 @@ export const ChangeDetailPane = memo(
               <p className="detail-heading-meta">{changeLabel}</p>
             </div>
             <div className="detail-actions">
+              <button
+                type="button"
+                className="action-btn detail-close-btn"
+                onClick={onClose}
+                aria-label="Close detail panel"
+                title="Close detail panel"
+              >
+                ×
+              </button>
               <button type="button" className="action-btn" onClick={() => copyCardReference(card)}>
                 Copy ref
               </button>
-              <Link className="action-btn" to={`/dockets/${docketId}/cards/${card.card_id}`}>
+              <Link className="action-btn" to={fullViewPath}>
                 Open full view
               </Link>
             </div>
@@ -54,13 +78,15 @@ export const ChangeDetailPane = memo(
             <span className={`status-chip ${priorityChipClass(metrics)}`}>{metrics.priorityLabel}</span>
             <span className={`status-chip ${sizeChipClass(metrics)}`}>{metrics.sizeLabel}</span>
             {metrics.linkedComments > 0 ? (
-              <span className="status-chip chip-comment-count">{metrics.linkedComments} comments</span>
+              <span className="status-chip chip-comment-count">
+                {metrics.linkedComments} comment{metrics.linkedComments === 1 ? "" : "s"}
+              </span>
             ) : null}
           </div>
         </div>
 
         <div className="detail-section">
-          <InlineDiff card={card} synopsis={synopsis} />
+          <InlineDiff card={card} synopsis={synopsis} initialMode={diffMode} onModeChange={onDiffModeChange} />
         </div>
 
         <WhyFlagged card={card} metrics={metrics} />
@@ -78,7 +104,9 @@ export const ChangeDetailPane = memo(
             {(card.related_clusters || []).map((cluster) => (
               <div key={cluster.cluster_id} className="detail-theme-row">
                 <span>{cluster.label || cluster.cluster_id}</span>
-                <span className="meta-line">{cluster.comment_count || 0} comments</span>
+                <span className="meta-line">
+                  {cluster.comment_count || 0} comment{(cluster.comment_count || 0) === 1 ? "" : "s"}
+                </span>
               </div>
             ))}
           </div>
@@ -90,5 +118,6 @@ export const ChangeDetailPane = memo(
     previous.card === next.card &&
     previous.metrics === next.metrics &&
     previous.insightReport === next.insightReport &&
-    previous.docketId === next.docketId
+    previous.docketId === next.docketId &&
+    previous.diffMode === next.diffMode
 );

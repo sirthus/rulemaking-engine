@@ -16,7 +16,7 @@ function whyPreview(card: ChangeCard, metrics: CardDisplayMetrics): string {
   const parts: string[] = [];
 
   if (metrics.linkedComments > 0) {
-    parts.push(`${metrics.linkedComments} comments`);
+    parts.push(`${metrics.linkedComments} comment${metrics.linkedComments === 1 ? "" : "s"}`);
   }
   if (metrics.sizeRank >= 3) {
     parts.push("large change");

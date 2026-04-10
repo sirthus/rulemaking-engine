@@ -12,6 +12,7 @@ import { ChangeListRow } from "../components/ChangeListRow";
 import { ErrorView } from "../components/ErrorView";
 import { FilterBar } from "../components/FilterBar";
 import { FindingEvidenceLine } from "../components/FindingEvidenceLine";
+import { diffModeToSearchParam, normalizeDiffMode, type DiffMode } from "../components/InlineDiff";
 import { InsightLoadingPanel, LoadingView } from "../components/LoadingView";
 import { ThemeRow, type ThemeSignalBreakdown } from "../components/ThemeCard";
 import {
@@ -193,6 +194,7 @@ export default function DocketPage() {
   const clusterQueryRaw = searchParams.get("clusterQuery") || "";
   const clusterQuery = clusterQueryRaw.trim().toLowerCase();
   const cardSort = normalizeCardSort(searchParams.get("cardSort"));
+  const diffMode = normalizeDiffMode(searchParams.get("diffMode"));
 
   const clusterById = useMemo(
     () => new Map(report.clusters.map((cluster) => [cluster.cluster_id, cluster])),
@@ -331,6 +333,26 @@ export default function DocketPage() {
     [searchParams, setSearchParams]
   );
 
+  const closeSelectedCard = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("card");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const setDiffMode = useCallback(
+    (value: DiffMode) => {
+      const next = new URLSearchParams(searchParams);
+      const searchValue = diffModeToSearchParam(value);
+      if (!searchValue) {
+        next.delete("diffMode");
+      } else {
+        next.set("diffMode", searchValue);
+      }
+      setSearchParams(next, { replace: true });
+    },
+    [searchParams, setSearchParams]
+  );
+
   const handleListKeyDown = useCallback(
     (event: KeyboardEvent<HTMLDivElement>, currentIndex: number) => {
       if (event.key === "ArrowDown") {
@@ -430,7 +452,8 @@ export default function DocketPage() {
             onClick={() => setTab(TAB_THEMES)}
             aria-selected={tab === TAB_THEMES}
           >
-            Comment Themes
+            <span className="tab-label-full">Comment Themes</span>
+            <span className="tab-label-compact">Themes</span>
             <span className="tab-count">{filteredClusters.length}</span>
           </button>
         </nav>
@@ -579,9 +602,7 @@ export default function DocketPage() {
                     className="inline-action fold-control"
                     onClick={() => setShowLowerSignalCards((value) => !value)}
                   >
-                    {showLowerSignalCards
-                      ? "Hide lower-signal and docket-process cards"
-                      : `Show ${foldedCards.length} lower-signal and docket-process card${foldedCards.length === 1 ? "" : "s"}`}
+                    {showLowerSignalCards ? "Hide extra cards" : `Show ${foldedCards.length} more cards`}
                   </button>
                 ) : null}
 
@@ -613,6 +634,9 @@ export default function DocketPage() {
                     metrics={cardMetrics.get(selectedCard.card_id)!}
                     insightReport={insightReport}
                     docketId={docketId}
+                    diffMode={diffMode}
+                    onDiffModeChange={setDiffMode}
+                    onClose={closeSelectedCard}
                   />
                 ) : (
                   <div className="review-detail-empty">

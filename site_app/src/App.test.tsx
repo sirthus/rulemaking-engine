@@ -7,6 +7,7 @@ import App from "./App";
 const snapshotMocks = vi.hoisted(() => ({
   loadManifest: vi.fn(),
   loadDocketIndex: vi.fn(),
+  loadInsightPreviewTitles: vi.fn(),
   loadReleaseSummary: vi.fn(),
   loadReport: vi.fn(),
   loadEvalReport: vi.fn(),
@@ -17,6 +18,7 @@ vi.mock("./snapshot", () => ({
   SNAPSHOT_BASE: "/site_data/current",
   loadManifest: snapshotMocks.loadManifest,
   loadDocketIndex: snapshotMocks.loadDocketIndex,
+  loadInsightPreviewTitles: snapshotMocks.loadInsightPreviewTitles,
   loadReleaseSummary: snapshotMocks.loadReleaseSummary,
   loadReport: snapshotMocks.loadReport,
   loadEvalReport: snapshotMocks.loadEvalReport,
@@ -33,10 +35,12 @@ describe("App routes", () => {
   beforeEach(() => {
     snapshotMocks.loadManifest.mockReset();
     snapshotMocks.loadDocketIndex.mockReset();
+    snapshotMocks.loadInsightPreviewTitles.mockReset();
     snapshotMocks.loadReleaseSummary.mockReset();
     snapshotMocks.loadReport.mockReset();
     snapshotMocks.loadEvalReport.mockReset();
     snapshotMocks.loadInsightReport.mockReset();
+    snapshotMocks.loadInsightPreviewTitles.mockResolvedValue({});
     snapshotMocks.loadReleaseSummary.mockRejectedValue(new Error("not used"));
     snapshotMocks.loadInsightReport.mockResolvedValue(null);
   });
@@ -92,7 +96,9 @@ describe("App routes", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Choose a docket", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByText(/Select a docket to read the executive summary/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Explore executive summaries, comment themes, and priority changes across published dockets/i)
+    ).toBeInTheDocument();
     expect(await screen.findByText("Regulatory Intelligence")).toBeInTheDocument();
     expect(await screen.findByText("Home Top Theme")).toBeInTheDocument();
     expect(await screen.findByText("Select a docket to begin")).toBeInTheDocument();
@@ -168,7 +174,18 @@ describe("App routes", () => {
     expect(screen.queryByText(/Open docket story/i)).toBeNull();
   });
 
-  it("renders the landing page without a preview title when the docket index omits it", async () => {
+  it("renders a not found page for unknown routes", async () => {
+    render(
+      <MemoryRouter initialEntries={["/nonexistent-page"]}>
+        <App />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByRole("heading", { name: "Page not found", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Return home" })).toHaveAttribute("href", "/");
+  });
+
+  it("renders the landing page with a fallback preview title when the docket index omits it", async () => {
     snapshotMocks.loadManifest.mockResolvedValue({
       schema_version: "v1",
       snapshot: {
@@ -212,6 +229,9 @@ describe("App routes", () => {
         },
       ],
     });
+    snapshotMocks.loadInsightPreviewTitles.mockResolvedValue({
+      "EPA-HQ-OAR-2020-0430": "Recovered insight title",
+    });
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App />
@@ -219,7 +239,7 @@ describe("App routes", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Choose a docket", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByText("No insight preview")).toBeInTheDocument();
+    expect(await screen.findByText("Recovered insight title")).toBeInTheDocument();
     expect(
       await screen.findByRole("link", { name: /Open Primary Copper Smelting NESHAP Reviews/i })
     ).toHaveAttribute("href", "/dockets/EPA-HQ-OAR-2020-0430");
@@ -413,7 +433,7 @@ describe("App routes", () => {
     expect(await screen.findByText("Unique comments")).toBeInTheDocument();
     expect((await screen.findAllByText("Linked changes")).length).toBeGreaterThan(0);
     expect(await screen.findByText("Total changes")).toBeInTheDocument();
-    expect(await screen.findByText("Themes")).toBeInTheDocument();
+    expect((await screen.findAllByText("Themes")).length).toBeGreaterThan(0);
     expect(screen.queryByText("Canonical")).toBeNull();
     expect(screen.queryByText("Label model")).toBeNull();
     expect(screen.queryByLabelText("Review status")).toBeNull();
@@ -426,7 +446,7 @@ describe("App routes", () => {
     expect(screen.queryByText("Large no comment heading")).toBeNull();
     expect(screen.queryByText("No comment heading")).toBeNull();
     expect(screen.queryByText("A. Written Comments")).toBeNull();
-    const foldButton = await screen.findByRole("button", { name: "Show 3 lower-signal and docket-process cards" });
+    const foldButton = await screen.findByRole("button", { name: "Show 3 more cards" });
     expect(Boolean(largeLinkedCard.compareDocumentPosition(foldButton) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     await user.selectOptions(await screen.findByLabelText("Sort cards"), "size");
     const sizeSortedLargeCard = await screen.findByText("Large linked heading");
@@ -435,7 +455,7 @@ describe("App routes", () => {
       Boolean(sizeSortedLargeCard.compareDocumentPosition(sizeSortedCommentCard) & Node.DOCUMENT_POSITION_FOLLOWING)
     ).toBe(true);
     const sizeSortedFoldButton = await screen.findByRole("button", {
-      name: "Show 3 lower-signal and docket-process cards",
+      name: "Show 3 more cards",
     });
     expect(
       Boolean(sizeSortedCommentCard.compareDocumentPosition(sizeSortedFoldButton) & Node.DOCUMENT_POSITION_FOLLOWING)
@@ -443,7 +463,7 @@ describe("App routes", () => {
     await user.click(sizeSortedFoldButton);
     expect(await screen.findByText("Lower-signal and docket-process cards")).toBeInTheDocument();
     const foldedHeading = await screen.findByRole("heading", { name: "3 cards available", level: 3 });
-    const hideFoldButton = await screen.findByRole("button", { name: "Hide lower-signal and docket-process cards" });
+    const hideFoldButton = await screen.findByRole("button", { name: "Hide extra cards" });
     expect(Boolean(hideFoldButton.compareDocumentPosition(foldedHeading) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(
       true
     );
@@ -672,6 +692,65 @@ describe("App routes", () => {
     const themeLink = await screen.findByRole("link", { name: /View changes linked to Example cluster/i });
     themeLink.focus();
     expect(themeLink).toHaveFocus();
+  });
+
+  it("preserves the selected diff mode in the full-view link", async () => {
+    const user = userEvent.setup();
+    snapshotMocks.loadReport.mockResolvedValue({
+      schema_version: "v1",
+      docket_id: "EPA-HQ-OAR-2020-0430",
+      generated_at: "2026-04-06T12:00:00+00:00",
+      generator: "generate_outputs.py",
+      summary: {
+        total_comments: 5,
+        total_canonical_comments: 4,
+        total_clusters: 1,
+        labeled_clusters: 1,
+        total_change_cards: 1,
+        change_type_counts: { modified: 1 },
+        alignment_signal_counts: { high: 1 },
+        review_status_counts: { pending: 1 },
+      },
+      clusters: [],
+      change_cards: [
+        {
+          card_id: "card-1",
+          change_type: "modified",
+          final_heading: "Example heading",
+          proposed_text_snippet: "Old text",
+          final_text_snippet: "New text",
+          alignment_signal: { level: "high", evidence_note: "Focusable card." },
+          related_clusters: [{ cluster_id: "cluster-1", label: "Example cluster", comment_count: 1 }],
+          preamble_links: [],
+          review_status: "pending",
+        },
+      ],
+    });
+    snapshotMocks.loadEvalReport.mockResolvedValue({
+      schema_version: "v1",
+      docket_id: "EPA-HQ-OAR-2020-0430",
+      evaluated_at: "2026-04-06T12:00:00+00:00",
+      generator: "evaluate_pipeline.py",
+      status: "not_available",
+      reason: "no_gold_set",
+    });
+    snapshotMocks.loadInsightReport.mockResolvedValue(null);
+
+    render(
+      <MemoryRouter initialEntries={["/dockets/EPA-HQ-OAR-2020-0430"]}>
+        <App />
+      </MemoryRouter>
+    );
+
+    await user.click(await screen.findByText("Example heading"));
+    await user.click(await screen.findByRole("button", { name: "Side-by-side" }));
+
+    expect(screen.queryByText("1 comments")).toBeNull();
+    expect((await screen.findAllByText("1 comment")).length).toBeGreaterThan(0);
+    expect(await screen.findByRole("link", { name: "Open full view" })).toHaveAttribute(
+      "href",
+      "/dockets/EPA-HQ-OAR-2020-0430/cards/card-1?diffMode=side-by-side"
+    );
   });
 
   it("applies docket filters from the URL", async () => {

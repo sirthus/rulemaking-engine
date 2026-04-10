@@ -983,7 +983,7 @@ p {
 
 .docket-row {
   display: grid;
-  grid-template-columns: minmax(0, 2fr) auto auto auto auto;
+  grid-template-columns: minmax(0, 1.7fr) auto minmax(18rem, 1.15fr) auto auto;
   align-items: center;
   gap: 1.5rem;
   padding: 1rem 1.25rem;
@@ -1029,9 +1029,10 @@ p {
   font-size: var(--text-base);
   font-weight: 600;
   color: var(--ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  max-width: min(34rem, 100%);
+  white-space: normal;
+  overflow: visible;
 }
 
 .docket-row-stats {
@@ -1050,10 +1051,13 @@ p {
 .docket-row-preview {
   font-size: var(--text-sm);
   color: var(--muted);
-  max-width: 200px;
-  white-space: nowrap;
+  max-width: none;
+  line-height: 1.35;
+  white-space: normal;
   overflow: hidden;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .docket-row-badges {
@@ -1092,6 +1096,9 @@ p {
   background: #fff;
   padding: 0 0.9rem;
   overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .tab-btn {
@@ -1108,7 +1115,12 @@ p {
   color: var(--muted-soft);
   cursor: pointer;
   white-space: nowrap;
+  flex: 0 0 auto;
   transition: color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.tab-label-compact {
+  display: none;
 }
 
 .tab-btn:hover {
@@ -1153,6 +1165,8 @@ p {
   top: 0;
   z-index: 20;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .filter-bar .filter-field {
@@ -1507,6 +1521,14 @@ p {
   color: var(--ink);
   border-color: rgba(31, 42, 46, 0.25);
   background: rgba(31, 42, 46, 0.02);
+}
+
+.detail-close-btn {
+  width: var(--control-height);
+  padding: 0;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .detail-chip-row {
@@ -1935,6 +1957,7 @@ p {
 
   .docket-row-preview {
     max-width: none;
+    -webkit-line-clamp: unset;
   }
 
   .review-workspace {
@@ -2027,6 +2050,8 @@ p {
 
   .filter-bar {
     align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.5rem;
   }
 
   .seg-control {
@@ -2037,7 +2062,64 @@ p {
     padding: 0 0.5rem;
   }
 
+  .tab-label-full {
+    display: none;
+  }
+
+  .tab-label-compact {
+    display: inline;
+  }
+
+  .filter-search {
+    min-width: 10.5rem;
+  }
+
+  .filter-bar-result {
+    display: none;
+  }
+
+  .filter-bar select,
+  .filter-bar input,
+  .filter-reset-btn,
+  .seg-btn {
+    font-size: 0.7rem;
+  }
+
+  .docket-row-title {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .docket-stat-strip {
+    gap: 0.15rem 0.65rem;
+    padding-top: 0.22rem;
+  }
+
   .docket-stat-item {
-    padding-right: 0.8rem;
+    padding: 0.08rem 0.55rem 0.08rem 0;
+    font-size: 0.72rem;
+  }
+
+  .docket-stat-item strong {
+    font-size: 1.12rem;
+  }
+
+  .priority-dist-bar {
+    gap: 0.16rem;
+  }
+
+  .priority-dist-label {
+    font-size: 0.58rem;
+  }
+
+  .priority-dist-track {
+    width: 132px;
+    height: 6px;
+  }
+
+  .priority-dist-legend {
+    font-size: 0.68rem;
   }
 }

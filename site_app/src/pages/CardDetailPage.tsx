@@ -1,4 +1,4 @@
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 import { AppChrome } from "../components/AppChrome";
 import { Breadcrumb } from "../components/Breadcrumb";
 import {
@@ -9,7 +9,13 @@ import {
 } from "../components/ChangeCardRow";
 import { CardInsightPanel, getCardInsightContext, preambleLinkKey } from "../components/CardInsightPanel";
 import { ErrorView } from "../components/ErrorView";
-import { cardChangeSynopsis, InlineDiff } from "../components/InlineDiff";
+import {
+  cardChangeSynopsis,
+  diffModeToSearchParam,
+  normalizeDiffMode,
+  type DiffMode,
+  InlineDiff,
+} from "../components/InlineDiff";
 import { InsightLoadingPanel, LoadingView } from "../components/LoadingView";
 import { useAsyncData } from "../hooks/useAsyncData";
 import type { InsightReport, Report } from "../models";
@@ -17,10 +23,12 @@ import { loadInsightReport, loadReport } from "../snapshot";
 
 export default function CardDetailPage() {
   const params = useParams<{ docketId: string; cardId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const docketId = params.docketId ?? "";
   const cardId = params.cardId ?? "";
   const reportState = useAsyncData<Report>(() => loadReport(docketId), [docketId]);
   const insightState = useAsyncData<InsightReport | null>(() => loadInsightReport(docketId), [docketId]);
+  const diffMode = normalizeDiffMode(searchParams.get("diffMode"));
 
   if (reportState.status === "loading") {
     return <LoadingView label={`Loading card ${cardId}`} />;
@@ -43,6 +51,16 @@ export default function CardDetailPage() {
   const cardLabel = card.final_heading || card.proposed_heading || card.card_id;
   const { priorityCard, linkedFindings, hasStalePriorityFindings } = getCardInsightContext(insightReport, cardId);
   const findingClusterIds = new Set(linkedFindings.flatMap((finding) => finding.cluster_ids));
+  const setDiffMode = (value: DiffMode) => {
+    const next = new URLSearchParams(searchParams);
+    const searchValue = diffModeToSearchParam(value);
+    if (!searchValue) {
+      next.delete("diffMode");
+    } else {
+      next.set("diffMode", searchValue);
+    }
+    setSearchParams(next, { replace: true });
+  };
 
   return (
     <AppChrome>
@@ -62,7 +80,9 @@ export default function CardDetailPage() {
           <span className={`status-chip ${priorityChipClass(detailMetrics)}`}>{detailMetrics.priorityLabel}</span>
           <span className={`status-chip ${sizeChipClass(detailMetrics)}`}>{detailMetrics.sizeLabel}</span>
           {detailMetrics.linkedComments > 0 ? (
-            <span className="status-chip chip-comment-count">{detailMetrics.linkedComments} comments</span>
+            <span className="status-chip chip-comment-count">
+              {detailMetrics.linkedComments} comment{detailMetrics.linkedComments === 1 ? "" : "s"}
+            </span>
           ) : null}
         </div>
       </section>
@@ -80,7 +100,7 @@ export default function CardDetailPage() {
 
       <section className="panel">
         <p className="eyebrow">Text comparison</p>
-        <InlineDiff card={card} synopsis={detailSynopsis} />
+        <InlineDiff card={card} synopsis={detailSynopsis} initialMode={diffMode} onModeChange={setDiffMode} />
       </section>
 
       <section className="panel">

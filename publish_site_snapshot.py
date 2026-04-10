@@ -193,7 +193,10 @@ def publish_snapshot(
             )
             print("  [insight_report.json] copied")
 
-        index_entries.append(build_index_entry(report, eval_report, insight_report, docket_id, published_at))
+        index_entry = build_index_entry(report, eval_report, insight_report, docket_id, published_at)
+        if insight_report is not None and not index_entry["top_finding_title"]:
+            print_line("WARN", f"{docket_id} insight_report.json has no top_findings[0].title")
+        index_entries.append(index_entry)
 
     release_summary = build_release_summary(
         resolved_release_id,
