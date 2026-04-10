@@ -1,258 +1,163 @@
-# Rulemaking Evolution and Comment Impact Engine
+# Rulemaking Engine
 
-Traceable rule-evolution analysis plus cautious comment-theme alignment for public rulemaking dockets.
+**Automated analysis of how federal rules change between proposal and adoption, and whether public comments influenced those changes.**
 
-## Overview
+When a federal agency like the EPA proposes a new regulation, the public has a window to submit comments. The agency must consider those comments before issuing the final rule. But proposed rules routinely span hundreds of pages, attract thousands of comments, and change in ways that are nearly impossible to trace by hand.
 
-This repository is an artifact-first local product:
+This project builds a complete pipeline that fetches proposed and final rule text, diffs every section, clusters public comments into themes, and surfaces where comment pressure may have shaped the final language — all presented through an interactive analyst surface.
 
-- local corpus stages build artifacts under `corpus/`
-- Codex runs cluster labeling and insight generation
-- review artifacts are written under `outputs/`
-- published site-safe JSON snapshots are written under `site_data/`
-- a static React app under `site_app/` reads only from `site_data/current/`
+![Home page](docs/images/homepage.png)
 
-There is no live model API in the product path, and the site never invokes a model directly.
+---
 
-## Current Status
+## What It Produces
 
-The V2 insight-first analyst surface is implemented for the locked three-docket EPA starter set:
+The pipeline processes three EPA rulemaking dockets end-to-end and publishes a static site where every claim is traceable to source text:
 
-- `EPA-HQ-OAR-2020-0272`
-- `EPA-HQ-OAR-2018-0225`
-- `EPA-HQ-OAR-2020-0430`
+**448 regulatory changes** identified and diffed across **129 comment themes** derived from **267 unique public comments**.
 
-The current product includes:
+Each change card shows:
+- The proposed vs. final text with inline or side-by-side diffs
+- Which comment themes align with that section
+- A priority ranking based on comment volume, change magnitude, and alignment signal
+- An evidence note explaining why the card was flagged
 
-- a static read-only React insight and review surface
-- the completed UI overhaul across the home, overview, priority changes, comment themes, and card detail surfaces
-- a completed refactor/performance pass across both the Python pipeline and the React app
-- shared Python pipeline helpers in `pipeline_utils.py`
-- per-docket parallelism in the dedup, change-card, and clustering stages, plus parallel Federal Register fetches
-- `generate_insights.py` and per-docket `insight_report.json`
-- published insight reports under `site_data/current/`
-- a home docket story launcher with preview titles embedded in the published docket index
-- docket-level summaries, top findings, and card detail evidence drilldown
-- analyst-first card sorting, proposed/final diffs, and lower-signal card folding
-- a richer published snapshot contract with `release_summary.json`
-- a route-split React app with lazy-loaded pages, memoized review/theme selectors, and cached snapshot fetches
-- blind gold-set packet generation and validation tooling
-- Vite dev/build support for serving and packaging the published snapshot
-- removal of the old local runtime helper and earlier spike artifacts that no longer belong in the product path
+The site is read-only and makes no model calls at runtime — everything is pre-computed and published as static JSON.
 
-## Prerequisites
+---
 
-Python/runtime:
+## How AI Is Used
 
-- `python` or `python3`
-- `pip`
-- `requests`
+AI is used at two points in the pipeline, both offline and auditable:
 
-Frontend/runtime:
+**Cluster labeling** — After comments are deduplicated and clustered by keyword similarity, an AI agent generates human-readable theme labels and descriptions for each cluster. This replaces what would otherwise be hours of manual annotation across dozens of clusters per docket.
 
-- `node`
-- `npm`
+**Insight synthesis** — For each docket, an AI agent generates an executive summary, top findings, and per-card evidence drilldowns. These explain *why* a change matters in plain language, connecting comment themes to specific regulatory sections. The generated text is checked against a banned-phrase list to prevent causal overclaims (the system surfaces correlation, not causation).
 
-API access:
+Separately, AI is also used to bootstrap the **evaluation baseline**: pipeline accuracy is measured against AI-generated gold sets that are blinded — the annotation packets strip identifying information so the evaluator can't reverse-engineer expected answers from the pipeline output. This provides a reproducible accuracy baseline without requiring human annotators.
 
-- `REGULATIONS_GOV_API_KEY` for `fetch_corpus.py`
+The AI never runs in the product path. The site serves pre-computed artifacts only.
 
-Install the Python dependency:
+---
 
-```bash
-pip install requests
+## Site Features
+
+### Home — Docket Launcher
+Three-docket overview with aggregate stats, insight preview titles pulled from the top finding of each docket's analysis, and quick-nav to any docket.
+
+### Overview — Executive Summary
+AI-generated docket analysis with what changed, what commenters emphasized, where the final text aligned with public input, and caveats. Top findings are displayed as evidence-linked cards. A collapsible evaluation section shows pipeline accuracy metrics.
+
+### Priority Changes — Ranked Change List
+All change cards ranked by a composite score of comment volume, change magnitude, and alignment signal. Filterable by signal level (high/medium/low/none), change type (modified/added/removed), and searchable by theme keyword. Cards with no comment linkage are folded behind a "show more" toggle to keep the analyst focused.
+
+Selecting a card opens a side panel with:
+- Inline, side-by-side, or changes-only diff views
+- "Why this was prioritized" evidence bullets
+- Insight drilldown with linked findings
+- Related comment themes with comment counts
+
+![Priority changes with card selected](docs/images/priority.png)
+
+### Comment Themes — Cluster Explorer
+All comment clusters with theme labels, descriptions, top keywords, argument/change counts, and a signal breakdown bar. Clicking a theme filters the priority changes view to show only cards linked to that theme.
+
+![Comment themes](docs/images/themes.png)
+
+### Full Card View
+Dedicated page per change card with the complete insight drilldown, text diff, evidence note, and all linked comment themes — useful for deep review or sharing a specific finding.
+
+![Full card view](docs/images/full.png)
+
+---
+
+## Pipeline Architecture
+
+The pipeline is local-first and artifact-first. Each stage reads from the previous stage's output files, so any step can be re-run independently.
+
+```
+Federal Register API ──→ fetch_corpus.py ──→ corpus/
+Regulations.gov API  ──↗
+
+corpus/ ──→ align_corpus.py ──→ aligned sections + comment attribution
+       ──→ dedup_comments.py ──→ deduplicated comment families
+       ──→ generate_change_cards.py ──→ 448 change cards with diffs
+       ──→ cluster_comments.py ──→ 129 comment clusters
+
+corpus/ ──→ generate_outputs.py ──→ outputs/ (report.json, CSV, HTML)
+       ──→ evaluate_pipeline.py ──→ eval_report.json
+       ──→ generate_insights.py ──→ insight_report.json
+
+outputs/ ──→ publish_site_snapshot.py ──→ site_data/current/
+site_data/current/ ──→ site_app (React) ──→ static site
 ```
 
-Set your Regulations.gov API key before fetching comments:
+### Key algorithms
+
+**Section alignment** — A four-stage cascade matches proposed sections to final sections: exact heading match, fuzzy Jaccard similarity (threshold 0.5), body-text keyword assistance, then sequential fallback. Achieves 65-96% section coverage depending on how much the rule restructured between proposal and adoption.
+
+**Comment deduplication** — Character 5-gram signatures with zlib CRC32 minhashing and Union-Find clustering. Identifies exact duplicates, near-duplicates (Jaccard >= 0.80), and form-letter campaigns (3+ members with multiple distinct hashes). Reduces raw comment volume by ~37% while preserving every unique argument.
+
+**Comment-to-section attribution** — Detects regulatory citations (§ references), keyword overlap, and structural proximity to assign comments to the sections they address, with confidence levels (high/medium/low).
+
+**Change card scoring** — Each card gets a composite priority score combining comment count, change magnitude (token-level diff size), and preamble linkage (CFR citations score higher than keyword overlap). Cards are ranked so the most impactful changes surface first.
+
+---
+
+## Quickstart
+
+### Prerequisites
+- Python 3 with `requests` (`pip install requests`)
+- Node.js and npm
+- A [Regulations.gov API key](https://open.gsa.gov/api/regulationsgov/)
+
+### Run the pipeline
 
 ```bash
 export REGULATIONS_GOV_API_KEY=your_key_here
-```
 
-Federal Register does not require an API key. Regulations.gov does.
+python fetch_corpus.py          # fetch rule text + comments
+python align_corpus.py          # align proposed ↔ final sections
+python dedup_comments.py        # deduplicate comments
+python generate_change_cards.py # generate change cards with diffs
+python cluster_comments.py      # cluster comments into themes
+python label_clusters.py        # AI-generate theme labels (requires a model endpoint)
 
-## Local Corpus Pipeline
-
-Run the corpus-building stages:
-
-```bash
-python fetch_corpus.py
-python align_corpus.py
-python dedup_comments.py
-python generate_change_cards.py
-python cluster_comments.py
-```
-
-## Codex Labeling and Publish Refresh
-
-Codex is the labeling and insight-generation agent. Do not use Ollama as a product workflow dependency.
-
-After Codex updates labels or insight text, regenerate and publish the downstream artifacts:
-
-```bash
 python generate_outputs.py --force
 python evaluate_pipeline.py
 python generate_insights.py
 python publish_site_snapshot.py
 ```
 
-That post-label refresh flow:
-
-1. regenerates `report.json`, `report.csv`, and `report.html`
-2. regenerates `eval_report.json`
-3. regenerates `insight_report.json`
-4. publishes a new immutable snapshot release plus `site_data/current/`
-
-## Outputs vs Published Site Data
-
-The repo now has three distinct artifact layers:
-
-- `corpus/`: source-of-truth working artifacts from the local pipeline
-- `outputs/`: operator review artifacts
-- `site_data/`: published JSON snapshots for the site
-
-Published snapshot contract:
-
-- `site_data/current/manifest.json`
-- `site_data/current/release_summary.json`
-- `site_data/current/dockets/index.json`
-- `site_data/current/dockets/{docket_id}/report.json`
-- `site_data/current/dockets/{docket_id}/eval_report.json`
-- `site_data/current/dockets/{docket_id}/insight_report.json`
-
-`report.csv`, `report.html`, raw corpus files, and operator-only manifests are intentionally excluded from the site contract.
-
-The published `dockets/index.json` now carries enough metadata for the homepage to render docket previews without eagerly fetching all three `insight_report.json` files.
-
-## Static React Site
-
-The site lives under `site_app/`. It is a client-only V2 insight surface with:
-
-- no backend
-- no SSR requirement
-- no model calls
-- no browser editing workflow
-- route-based code splitting for the home, docket, and card-detail pages
-- immutable snapshot JSON caching inside the frontend loader
-
-The site expects a published snapshot to exist first:
-
-```bash
-python publish_site_snapshot.py
-```
-
-Then use the frontend workspace:
+### Run the site
 
 ```bash
 cd site_app
 npm install
-npm test
 npm run build
-npm run dev
+npx serve dist
 ```
 
-Useful routes:
-
-- `/`
-- `/dockets/:docketId`
-- `/dockets/:docketId/cards/:cardId`
-
-Local serving behavior:
-
-- in `npm run dev`, Vite serves `site_data/current/` directly at `/site_data/current/...`
-- in `npm run build`, the snapshot is copied into `dist/site_data/current/`
-- `npm run preview` serves the built snapshot-aware site
-
-The frontend loader now tolerates both:
-
-- the current V2 snapshot shape
-- the earlier published snapshot shape from before the richer docket index fields existed
-
-That compatibility is only a safety net. The recommended path is still to regenerate the downstream artifacts after Codex labeling, then publish the snapshot so the site gets the latest V2 metadata and insight reports.
-
-## Blind Evaluation Workflow
-
-The workflow makes blind gold-set mechanics a first-class repo workflow.
-
-Generate a blinded packet and editable template from the current published snapshot:
+### Run tests
 
 ```bash
-python prepare_gold_set_packet.py --docket EPA-HQ-OAR-2020-0430
+# Backend
+python -m pytest test_*.py -v
+
+# Frontend
+cd site_app && npm test
 ```
 
-That writes:
+---
 
-- `gold_set/packets/{docket_id}.packet.json`
-- `gold_set/templates/{docket_id}.template.json`
+## Scope
 
-AI-blind gold sets are accepted as the V2 evaluation baseline. Validate any new or updated gold set before evaluation:
+This is a focused prototype, not a general-purpose regulatory platform:
 
-```bash
-python validate_gold_set.py --docket EPA-HQ-OAR-2020-0430 --path gold_set/EPA-HQ-OAR-2020-0430.json
-```
+- **One agency**: EPA
+- **Three dockets**: CSAPR Ozone Update, Good Neighbor Obligations, Primary Copper Smelting NESHAP
+- **Comment body text only** — no attachment parsing or OCR
+- **Correlation, not causation** — the system surfaces where comment themes and rule changes co-occur, never claims comments *caused* changes
+- **Static output** — no live inference, no backend service, no database
 
-Then regenerate evaluation:
-
-```bash
-python evaluate_pipeline.py --docket EPA-HQ-OAR-2020-0430
-```
-
-If a docket lacks a committed gold set, evaluation writes an `eval_report.json` stub with `status: "not_available"`.
-
-## Verified Commands
-
-Backend verification:
-
-```bash
-python -m unittest test_pipeline_utils.py test_label_clusters.py test_refresh_site_snapshot.py test_comment_dedup_and_signals.py test_change_cards.py test_cluster_comments.py test_publish_site_snapshot.py -v
-python -m unittest test_comment_dedup_and_signals.py test_generate_outputs.py test_evaluate.py test_cluster_comments.py test_change_cards.py test_publish_site_snapshot.py test_docs_acceptance.py test_gold_set_workflow.py test_gold_set_consistency.py -v
-TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_generate_insights.py test_publish_site_snapshot.py test_refresh_site_snapshot.py -v
-TMPDIR=/tmp TMP=/tmp TEMP=/tmp python -m pytest test_pipeline_utils.py -v
-```
-
-Frontend verification:
-
-```bash
-cd site_app
-npm test -- --run src/App.test.tsx src/snapshot.test.ts
-npm run build
-```
-
-## Scope And Guardrails
-
-The operating scope is intentionally narrow:
-
-- one agency: EPA
-- three locked dockets
-- one proposed rule and one final rule per docket
-- comments from the main text body only
-- read-only browser review surface
-
-Current non-goals:
-
-- no attachment parsing
-- no OCR pipeline
-- no eCFR integration
-- no live inference backend
-- no browser editing workflow
-- no causal claim that comments determined a rule change
-
-## Portable Handoff Docs
-
-The active handoff docs are tracked in Git so another machine can pull the repo and know what to do next:
-
-- `PROJECT_STATUS.md`: current state, accepted architecture decisions, verification notes, and next tasks
-- `README.md`: quickstart and operator workflow
-- `CLAUDE.md`: Claude Code coordination and guardrails
-
-If a fresh checkout is unclear, read `PROJECT_STATUS.md` first. It is the canonical brief handoff for the next work block.
-
-## Roadmap
-
-The V2 insight surface, UI overhaul, and refactor/performance pass are complete for the current three-docket EPA scope.
-
-The next planned work is:
-
-1. turn the top-level `README.md` into a stronger Showpiece README for the project
-2. audit the large stylesheet and remove dead CSS left over from the UI overhaul
-3. continue low-risk cleanup without changing the local-first/static architecture
+These constraints are intentional. The goal is a defensible, reproducible analysis pipeline — not a product that overpromises on what automated text analysis can prove about regulatory influence.

@@ -4,8 +4,10 @@ import {
   clearSnapshotCache,
   loadDocketIndex,
   loadInsightReport,
+  loadInsightPreviewTitles,
   loadManifest,
   loadReleaseSummary,
+  summarizeMetricBlock,
 } from "./snapshot";
 
 describe("snapshot schema guard", () => {
@@ -149,6 +151,87 @@ describe("snapshot schema guard", () => {
 
     expect(result).toBeNull();
     fetchMock.mockRestore();
+  });
+
+  it("loads fallback insight preview titles for dockets missing index previews", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        schema_version: "v1",
+        docket_id: "EPA-HQ-OAR-2020-0430",
+        generated_at: "2026-04-07T12:00:00+00:00",
+        generator: "generate_insights.py",
+        executive_summary: "Expected insight summary.",
+        top_findings: [
+          {
+            finding_id: "finding-1",
+            title: "Recovered preview title",
+            summary: "",
+            why_it_matters: "",
+            evidence_note: "",
+            card_ids: [],
+            cluster_ids: [],
+          },
+        ],
+        rule_story: {
+          what_changed: "",
+          what_commenters_emphasized: "",
+          where_final_text_aligned: "",
+          caveats: "",
+        },
+        priority_cards: [],
+        provenance: {
+          source_report: "outputs/EPA-HQ-OAR-2020-0430/report.json",
+          source_eval_report: "outputs/EPA-HQ-OAR-2020-0430/eval_report.json",
+          eval_available: true,
+          report_schema_version: "v1",
+          card_count: 1,
+          cluster_count: 1,
+          finding_count: 1,
+        },
+      }),
+    } as Response);
+
+    const result = await loadInsightPreviewTitles([
+      {
+        docket_id: "EPA-HQ-OAR-2020-0430",
+        display_title: "EPA-HQ-OAR-2020-0430",
+        top_finding_title: null,
+        report_path: "dockets/EPA-HQ-OAR-2020-0430/report.json",
+        eval_report_path: "dockets/EPA-HQ-OAR-2020-0430/eval_report.json",
+        insight_report_path: "dockets/EPA-HQ-OAR-2020-0430/insight_report.json",
+        insight_available: true,
+        latest_publish_at: "2026-04-06T12:00:00+00:00",
+        evaluation_status: "available",
+        evaluation_available: true,
+        total_clusters: 12,
+        total_change_cards: 146,
+        labeled_clusters: 12,
+        change_type_counts: {},
+        alignment_signal_counts: {},
+        review_status_counts: {},
+        labeling: {},
+      },
+    ]);
+
+    expect(result).toEqual({
+      "EPA-HQ-OAR-2020-0430": "Recovered preview title",
+    });
+    fetchMock.mockRestore();
+  });
+
+  it("formats structured metric blocks for display", () => {
+    expect(
+      summarizeMetricBlock({
+        change_type_agreement: { matched: 25, total: 25, pct: 100 },
+        alignment_levels: { high: 3, medium: 2 },
+        eval_available: true,
+      })
+    ).toEqual([
+      "change_type_agreement: 25/25 matched (100%)",
+      "alignment_levels: high=3, medium=2",
+      "eval_available: true",
+    ]);
   });
 
   it("loadReleaseSummary returns parsed release summary", async () => {

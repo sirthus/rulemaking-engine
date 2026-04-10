@@ -1,15 +1,35 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChangeCard } from "../models";
 import { type DiffPiece, diffSnippets, tokenizeSnippet } from "./ChangeSnippet";
 import type { CardDisplayMetrics } from "./ChangeCardRow";
 
-type DiffMode = "inline" | "side_by_side" | "changes_only";
+export type DiffMode = "inline" | "side_by_side" | "changes_only";
 
 const DIFF_MODES: Array<{ id: DiffMode; label: string }> = [
   { id: "inline", label: "Inline" },
   { id: "side_by_side", label: "Side-by-side" },
   { id: "changes_only", label: "Changes only" },
 ];
+
+export function normalizeDiffMode(value: string | null | undefined): DiffMode {
+  if (value === "side_by_side" || value === "side-by-side") {
+    return "side_by_side";
+  }
+  if (value === "changes_only" || value === "changes-only") {
+    return "changes_only";
+  }
+  return "inline";
+}
+
+export function diffModeToSearchParam(mode: DiffMode): string | null {
+  if (mode === "side_by_side") {
+    return "side-by-side";
+  }
+  if (mode === "changes_only") {
+    return "changes-only";
+  }
+  return null;
+}
 
 export function mergeToInlineStream(proposed: DiffPiece[], final: DiffPiece[]): DiffPiece[] {
   const merged: DiffPiece[] = [];
@@ -300,14 +320,38 @@ function DiffColumn({
   );
 }
 
-export function InlineDiff({ card, synopsis }: { card: ChangeCard; synopsis?: string }) {
-  const [mode, setMode] = useState<DiffMode>("inline");
+export function InlineDiff({
+  card,
+  synopsis,
+  initialMode,
+  onModeChange,
+}: {
+  card: ChangeCard;
+  synopsis?: string;
+  initialMode?: string | null;
+  onModeChange?: (mode: DiffMode) => void;
+}) {
+  const normalizedInitialMode = normalizeDiffMode(initialMode);
+  const [mode, setMode] = useState<DiffMode>(normalizedInitialMode);
   const [expandedRuns, setExpandedRuns] = useState<Record<number, boolean>>({});
   const { inlinePieces, removedPieces, addedPieces, removedGroups, addedGroups } = useMemo(
     () => buildDiffSets(card),
     [card.change_type, card.final_text_snippet, card.proposed_text_snippet]
   );
   const hasInlineContext = useMemo(() => inlinePieces.some((piece) => piece.kind === "unchanged"), [inlinePieces]);
+
+  useEffect(() => {
+    setMode(normalizedInitialMode);
+  }, [normalizedInitialMode]);
+
+  useEffect(() => {
+    setExpandedRuns({});
+  }, [card.card_id, mode]);
+
+  const handleModeChange = (nextMode: DiffMode) => {
+    setMode(nextMode);
+    onModeChange?.(nextMode);
+  };
 
   return (
     <div className="diff-viewer">
@@ -319,7 +363,7 @@ export function InlineDiff({ card, synopsis }: { card: ChangeCard; synopsis?: st
               key={option.id}
               type="button"
               className={`diff-mode-btn${mode === option.id ? " active" : ""}`}
-              onClick={() => setMode(option.id)}
+              onClick={() => handleModeChange(option.id)}
             >
               {option.label}
             </button>
@@ -328,22 +372,14 @@ export function InlineDiff({ card, synopsis }: { card: ChangeCard; synopsis?: st
       </div>
 
       {mode === "inline" ? (
-        <>
-          <div className="diff-summary-grid">
-            <ChangeGroupSection title="Removed" pieces={removedGroups} />
-            <ChangeGroupSection title="Added" pieces={addedGroups} />
+        <section className="diff-context-panel">
+          <p className="diff-section-label">{hasInlineContext ? "Inline diff" : "Changes"}</p>
+          <div className="diff-inline">
+            {renderInlineParagraphs(inlinePieces, expandedRuns, (runIndex) =>
+              setExpandedRuns((current) => ({ ...current, [runIndex]: true }))
+            )}
           </div>
-          {hasInlineContext ? (
-            <section className="diff-context-panel">
-              <p className="diff-section-label">Unchanged context</p>
-              <div className="diff-inline">
-                {renderInlineParagraphs(inlinePieces, expandedRuns, (runIndex) =>
-                  setExpandedRuns((current) => ({ ...current, [runIndex]: true }))
-                )}
-              </div>
-            </section>
-          ) : null}
-        </>
+        </section>
       ) : null}
 
       {mode === "side_by_side" ? (

@@ -5,12 +5,16 @@ import { LoadingView } from "../components/LoadingView";
 import { docketStoryTitle, formatStamp } from "../constants";
 import { useAsyncData } from "../hooks/useAsyncData";
 import type { DocketIndex, ReleaseSummary, SnapshotManifest } from "../models";
-import { loadDocketIndex, loadManifest, loadReleaseSummary } from "../snapshot";
+import { loadDocketIndex, loadInsightPreviewTitles, loadManifest, loadReleaseSummary } from "../snapshot";
 
 export default function HomePage() {
   const manifestState = useAsyncData<SnapshotManifest>(() => loadManifest(), []);
   const indexState = useAsyncData<DocketIndex>(() => loadDocketIndex(), []);
   const releaseSummaryState = useAsyncData<ReleaseSummary>(() => loadReleaseSummary(), []);
+  const insightPreviewState = useAsyncData<Record<string, string>>(
+    () => (indexState.status === "ready" ? loadInsightPreviewTitles(indexState.data.dockets) : Promise.resolve({})),
+    [indexState.status === "ready" ? indexState.data.published_at : "pending"]
+  );
 
   if (manifestState.status === "loading" || indexState.status === "loading") {
     return <LoadingView label="Loading docket index" />;
@@ -24,6 +28,7 @@ export default function HomePage() {
 
   const manifest = manifestState.data;
   const docketIndex = indexState.data;
+  const insightPreviewTitles = insightPreviewState.status === "ready" ? insightPreviewState.data : {};
   const totalCards = docketIndex.dockets.reduce((sum, docket) => sum + docket.total_change_cards, 0);
   const totalCommentThemes = docketIndex.dockets.reduce((sum, docket) => sum + docket.total_clusters, 0);
 
@@ -33,10 +38,7 @@ export default function HomePage() {
         <div className="exec-band-left">
           <p className="exec-kicker">Regulatory Intelligence</p>
           <h1 className="exec-title">Choose a docket</h1>
-          <p className="exec-sub">
-            Select a docket to read the executive summary, inspect comment themes, and review priority changes with
-            evidence links.
-          </p>
+          <p className="exec-sub">Explore executive summaries, comment themes, and priority changes across published dockets.</p>
           <p className="exec-meta">Snapshot {formatStamp(manifest.snapshot.published_at)}</p>
         </div>
         <div className="exec-band-kpis">
@@ -81,7 +83,7 @@ export default function HomePage() {
         <div className="docket-selector">
           {docketIndex.dockets.map((docket) => {
             const storyTitle = docketStoryTitle(docket.docket_id, docket.display_title);
-            const previewTitle = docket.top_finding_title || null;
+            const previewTitle = docket.top_finding_title || insightPreviewTitles[docket.docket_id] || null;
 
             return (
               <Link
@@ -108,7 +110,9 @@ export default function HomePage() {
                 {previewTitle ? (
                   <span className="docket-row-preview">{previewTitle}</span>
                 ) : (
-                  <span className="docket-row-preview meta-line">No insight preview</span>
+                  <span className="docket-row-preview meta-line">
+                    {docket.insight_available ? "Insight report available" : "No insight preview"}
+                  </span>
                 )}
                 <div className="docket-row-badges">
                   <span className={`status-chip ${docket.insight_available ? "available" : "not_available"}`}>

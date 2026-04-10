@@ -229,7 +229,7 @@ export function ChangeCardRow({
           <span className={`status-chip ${sizeChipClass(metrics)}`}>{metrics.sizeLabel}</span>
           <span className="status-chip available">{card.change_type || "unknown"}</span>
           <span className={`status-chip ${commentCount > 0 ? "available" : "not_available"}`}>
-            {commentCount > 0 ? `${commentCount} linked comments` : "No linked comments"}
+            {commentCount > 0 ? `${commentCount} linked comment${commentCount === 1 ? "" : "s"}` : "No linked comments"}
           </span>
         </div>
       </div>
